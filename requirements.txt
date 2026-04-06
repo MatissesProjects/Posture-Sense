@@ -1,0 +1,8 @@
+mediapipe
+opencv-python
+numpy
+fastapi
+uvicorn
+screeninfo
+pywin32
+pytest

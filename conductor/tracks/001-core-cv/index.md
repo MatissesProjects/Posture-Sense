@@ -2,7 +2,7 @@
 
 This track focuses on the foundational computer vision work: capturing the webcam feed and using MediaPipe to detect key joints.
 
-## Status: *Not Started*
+## Status: *Completed*
 
 ## Goals
 - Stable webcam capture.
