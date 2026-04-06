@@ -2,6 +2,7 @@
 
 ## Phase 1: Workspace Geometry Detection
 - [ ] Use `screeninfo` to get monitor resolution and position.
+- [ ] Analyze `monitors_and_webcam_layout.png` to understand the relative position of the webcam and monitors.
 - [ ] Detect "stacked" layout (one monitor's Y-coordinate above the other).
 
 ## Phase 2: Active Window Tracking

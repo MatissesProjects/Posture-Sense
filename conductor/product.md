@@ -7,7 +7,7 @@ A desktop application that optimizes user posture at a standing desk with stacke
 1. **Pose & Eye Tracking**: Real-time monitoring of shoulders, neck, and eye-gaze using MediaPipe.
 2. **Posture Scoring**: Calculating the "Posture Score" based on neck-monitor alignment.
 3. **Sit/Stand Detection**: Automatically detecting or allowing input for the user's current working mode (sitting vs standing), accounting for the webcam's fixed position on the monitor.
-4. **Monitor Awareness**: Integration with Windows API to understand the layout of stacked monitors.
+4. **Monitor Awareness**: Integration with Windows API to understand the layout of stacked monitors. See `monitors_and_webcam_layout.png` for the specific hardware configuration.
 5. **Optimal Placement Suggestion**: Guiding the user to place their active text/window at the best possible point for their current posture and height.
 
 ## User Persona
