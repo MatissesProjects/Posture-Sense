@@ -94,10 +94,11 @@ class PostureAnalyzer:
         logger.info(f"Calibration successful: {self.baseline}")
         return True
 
-    def analyze(self, pose_data):
+    def analyze(self, pose_data, iris_data=None):
         """
         Analyzes pose data to determine posture score and sit/stand status.
         pose_data: dict of named landmarks from PoseDetector.
+        iris_data: optional dict of iris landmarks from EyeTracker.
         """
         if not pose_data or "nose" not in pose_data:
             return {
@@ -130,14 +131,16 @@ class PostureAnalyzer:
 
         # 4. Elbow Angle (Ergonomic 90-120 degrees)
         elbow_score = 100
+        elbow_angles = []
         if "left_elbow" in pose_data and "left_wrist" in pose_data:
-            l_elbow_angle = self.calculate_angle(
-                pose_data["left_shoulder"], 
-                pose_data["left_elbow"], 
-                pose_data["left_wrist"]
-            )
+            elbow_angles.append(self.calculate_angle(pose_data["left_shoulder"], pose_data["left_elbow"], pose_data["left_wrist"]))
+        if "right_elbow" in pose_data and "right_wrist" in pose_data:
+            elbow_angles.append(self.calculate_angle(pose_data["right_shoulder"], pose_data["right_elbow"], pose_data["right_wrist"]))
+        
+        if elbow_angles:
+            avg_elbow_angle = sum(elbow_angles) / len(elbow_angles)
             # Penalize if far from 105 degrees (midpoint of 90-120)
-            elbow_diff = abs(l_elbow_angle - 105)
+            elbow_diff = abs(avg_elbow_angle - 105)
             elbow_score = max(0, 100 - (elbow_diff * 2))
 
         # 5. Spine/Hip Alignment
@@ -159,6 +162,9 @@ class PostureAnalyzer:
             # Heuristic
             self.is_standing = nose['y'] < 0.38
 
+        # 7. Distance Estimation
+        distance_cm = self.estimate_distance(iris_data) if iris_data else None
+
         # Weighted Total Score
         total_score = (
             shoulder_score * self.weights["shoulder_level"] +
@@ -172,6 +178,7 @@ class PostureAnalyzer:
             "score": round(total_score, 2),
             "is_standing": self.is_standing,
             "calibrated": self.baseline is not None,
+            "distance_cm": distance_cm,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4),
                 "neck_tilt_lat": round(neck_tilt_lat, 4),
