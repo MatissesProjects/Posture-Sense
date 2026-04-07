@@ -11,14 +11,23 @@ STATS_PATH = "user_stats.json"
 class StatsManager:
     def __init__(self):
         self.stats = {
-            "daily_history": {}, # date: { avg_score, ergonomic_minutes }
+            "daily_history": {}, 
             "current_streak": 0,
             "last_active_date": None,
-            "total_ergonomic_minutes": 0
+            "total_ergonomic_minutes": 0,
+            "first_seen_date": None
         }
         self.load_stats()
+        if not self.stats.get("first_seen_date"):
+            self.stats["first_seen_date"] = datetime.date.today().isoformat()
+            self.save_stats()
 
-    def load_stats(self):
+    def get_app_age_days(self):
+        first_date = datetime.date.fromisoformat(self.stats["first_seen_date"])
+        return (datetime.date.today() - first_date).days
+
+    def get_summary(self):
+
         if os.path.exists(STATS_PATH):
             try:
                 with open(STATS_PATH, 'r') as f:
