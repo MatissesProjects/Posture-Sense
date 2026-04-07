@@ -16,8 +16,8 @@
 - [x] Ensure $\theta$ is within the ergonomic safe range ($15^\circ$ to $30^\circ$ downward).
 
 ## Phase 4: Text Placement Suggestion
-- [ ] Create a logic to suggest window movement/text adjustment if it's too high/low.
-- [ ] Visualize the "Sweet Spot" on the dashboard UI.
+- [x] Create a logic to suggest window movement/text adjustment if it's too high/low.
+- [x] Visualize the "Sweet Spot" on the dashboard UI.
 
 ## Phase 5: Advanced Integration & Context
 - [ ] **Eye-Tracking Contextualization**: Use gaze data to confirm if the user is looking at the primary or secondary monitor, adjusting warning urgency accordingly.

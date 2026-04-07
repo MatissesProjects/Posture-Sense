@@ -78,18 +78,18 @@ class CVWorker:
             result['workspace'] = self.monitor_manager.get_layout_info()
             result['window'] = self.window_manager.get_active_window_info()
             
-            # Calculate ESS based on eye level
+            # Calculate ESS, Distance, and Viewing Angle
             if result.get('pose') and 'nose' in result['pose']:
-                eye_y = result['pose']['nose']['y']
+                eye_y = result['pose']['nose']['y'] # Use nose as proxy for eye level
                 result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
                 
                 # Distance Estimation (cm)
                 distance = self.pipeline.posture_analyzer.estimate_distance(result.get('iris'))
                 result['analysis']['distance_cm'] = distance
                 
-                # Viewing Angle (theta)
+                # Viewing Angle (theta) and Placement Suggestion
                 if distance and result['window'] and result['ess']:
-                    # Use center of active window or ESS target as point of interest
+                    # Use center of active window as point of interest
                     target_y = result['window']['y'] + (result['window']['height'] / 2)
                     # Convert eye normalized Y to global screen Y
                     eye_y_pixel = eye_y * result['workspace']['total_height']
@@ -98,20 +98,24 @@ class CVWorker:
                         eye_y_pixel, target_y, distance
                     )
                     result['analysis']['viewing_angle'] = angle
+
+                    # Placement Suggestion based on ESS
+                    ess_y = result['ess']['target_y']
+                    if target_y < ess_y - 150:
+                        result['analysis']['placement_suggestion'] = "Move active window DOWN for better neck alignment."
+                    elif target_y > ess_y + 150:
+                        result['analysis']['placement_suggestion'] = "Move active window UP for better neck alignment."
+                    else:
+                        result['analysis']['placement_suggestion'] = "Window is in the Ergonomic Sweet Spot."
             
             self.last_result = result
-            
-            # Optional: Add the frame itself if needed (expensive to send over WS)
-            # result['frame'] = frame 
             
             if self.callback:
                 self.callback(result, frame)
             
-            # Small sleep to prevent 100% CPU usage if needed
             # time.sleep(0.01) 
 
 if __name__ == "__main__":
-    # Test the worker
     def simple_callback(data, frame):
         score = data['analysis'].get('score', 0)
         cv2.putText(frame, f"Score: {score}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
