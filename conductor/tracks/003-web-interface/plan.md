@@ -1,13 +1,13 @@
 # Implementation Plan: Track 003 - Web Interface
 
 ## Phase 1: Backend API Skeleton
-- [ ] Initialize a FastAPI project.
-- [ ] Set up a WebSocket endpoint for real-time landmark data.
+- [x] Initialize a FastAPI project in `src/api`.
+- [x] Set up a WebSocket endpoint for real-time landmark data.
 - [ ] Create a "mock-stream" to test the UI without a camera.
 
 ## Phase 2: Frontend Scaffold
-- [ ] Initialize a React/Next.js app.
-- [ ] Install UI components (e.g., Tailwind CSS, Lucide Icons, Shadcn/UI).
+- [x] Initialize a React/Next.js app in `web/`.
+- [ ] Install additional UI components (e.g., Lucide Icons, Shadcn/UI).
 
 ## Phase 3: Visualization & Feedback
 - [ ] Develop a Canvas-based skeleton visualizer.
