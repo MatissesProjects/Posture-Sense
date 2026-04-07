@@ -186,58 +186,84 @@ export default function PostureDashboard() {
 }
 
 function WorkspaceVisualizer({ data }: { data: any }) {
-  if (!data?.workspace || !data?.workspace.top) return (
+  if (!data?.workspace || !data?.workspace.monitors) return (
     <div className="flex-1 flex items-center justify-center text-slate-600 italic text-sm">
       Awaiting workspace data...
     </div>
   );
 
   const { workspace, window, ess } = data;
-  const totalHeight = workspace.total_height;
-  const topH = workspace.top.height;
-  const bottomH = workspace.bottom.height;
-
-  // Scaling factor for visualization
-  const scale = 200 / totalHeight;
+  const { monitors, webcam, bounds } = workspace;
+  
+  // Scaling factor: Max dimension (width or height) mapped to 200px
+  const scale = 200 / Math.max(bounds.width, bounds.height);
+  const offsetX = -bounds.min_x * scale;
+  const offsetY = -bounds.min_y * scale;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-4">
-      <div className="relative w-40 bg-slate-800 rounded border-2 border-slate-700 overflow-hidden" style={{ height: totalHeight * scale }}>
-        {/* Top Monitor */}
-        <div className="absolute top-0 left-0 w-full border-b border-slate-600 bg-slate-700/30 flex items-center justify-center text-[10px] font-bold text-slate-500" style={{ height: topH * scale }}>
-          TOP
-        </div>
-        {/* Bottom Monitor */}
-        <div className="absolute bottom-0 left-0 w-full bg-slate-700/30 flex items-center justify-center text-[10px] font-bold text-slate-500" style={{ height: bottomH * scale }}>
-          BOTTOM
-        </div>
+      <div 
+        className="relative bg-slate-800 rounded border-2 border-slate-700 shadow-inner" 
+        style={{ 
+          width: bounds.width * scale, 
+          height: bounds.height * scale 
+        }}
+      >
+        {/* Monitors */}
+        {monitors.map((m: any) => (
+          <div 
+            key={m.id}
+            className="absolute border border-slate-500 bg-slate-700/40 flex items-center justify-center text-[8px] font-bold text-slate-400 overflow-hidden"
+            style={{ 
+              left: offsetX + m.x * scale, 
+              top: offsetY + m.y * scale, 
+              width: m.width * scale, 
+              height: m.height * scale 
+            }}
+          >
+            M{m.id}
+          </div>
+        ))}
 
         {/* Active Window */}
         {window && (
           <div 
-            className="absolute left-2 right-2 bg-indigo-500/40 border border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.4)] transition-all duration-300 rounded-sm"
+            className="absolute bg-indigo-500/50 border border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-300 rounded-sm z-10"
             style={{ 
-              top: window.y * scale, 
+              left: offsetX + window.x * scale,
+              top: offsetY + window.y * scale, 
+              width: window.width * scale, 
               height: window.height * scale 
             }}
           >
             <div className="w-full h-full flex items-center justify-center overflow-hidden px-1">
-               <span className="text-[8px] font-medium text-white whitespace-nowrap truncate">{window.title}</span>
+               <span className="text-[6px] font-medium text-white truncate">{window.title}</span>
             </div>
           </div>
+        )}
+
+        {/* Webcam Indicator */}
+        {monitors[webcam.anchor_monitor_index] && (
+          <div 
+            className="absolute w-2 h-1 bg-red-500 rounded-full shadow-[0_0_5px_red] z-20 transition-all"
+            style={{ 
+              left: offsetX + (monitors[webcam.anchor_monitor_index].x + monitors[webcam.anchor_monitor_index].width * webcam.offset_x_pct) * scale - 4,
+              top: offsetY + (monitors[webcam.anchor_monitor_index].y + webcam.offset_y_px) * scale - 2
+            }}
+          />
         )}
 
         {/* Ergonomic Sweet Spot (ESS) Target */}
         {ess && (
           <div 
-            className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-400/60 z-20"
-            style={{ top: ess.target_y * scale }}
+            className="absolute left-0 right-0 border-t-2 border-dotted border-emerald-400/80 z-30 pointer-events-none"
+            style={{ top: offsetY + ess.target_y * scale }}
           >
-            <div className="absolute -top-3 right-1 text-[8px] text-emerald-400 font-bold uppercase tracking-tighter">Target</div>
+            <div className="absolute -top-3 right-1 text-[7px] text-emerald-400 font-bold uppercase tracking-tighter bg-slate-900 px-1 rounded-sm">Target</div>
           </div>
         )}
       </div>
-      <p className="mt-4 text-[10px] text-slate-500 font-medium">VERTICAL STACK MODEL</p>
+      <p className="mt-4 text-[10px] text-slate-500 font-medium uppercase tracking-widest tracking-widest">Workspace Geometry Model</p>
     </div>
   );
 }

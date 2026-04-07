@@ -34,39 +34,33 @@ class WindowManager:
             return None
 
     def _identify_monitor(self, x, y):
-        """ Determines which monitor a point (x, y) belongs to. """
-        top = self.monitor_manager.top_monitor
-        bottom = self.monitor_manager.bottom_monitor
-        
-        if top and (top.y <= y < top.y + top.height):
-            return "top"
-        if bottom and (bottom.y <= y < bottom.y + bottom.height):
-            return "bottom"
+        """ Determines which monitor a point (x, y) belongs to using bounding boxes. """
+        for m in self.monitor_manager.monitors:
+            if (m["x"] <= x < m["x"] + m["width"]) and \
+               (m["y"] <= y < m["y"] + m["height"]):
+                return f"monitor_{m['id']}"
         return "unknown"
 
     def get_ergonomic_sweet_spot(self, eye_y_normalized):
         """ 
-        Calculates the 'Ergonomic Sweet Spot' (ESS) on the screen 
-        based on the user's eye level.
-        Guidelines: Top of text should be at eye level or slightly below (15-30 deg).
+        Calculates the 'Ergonomic Sweet Spot' (ESS) relative to the WEBCAM.
+        eye_y_normalized: Vertical position of eyes in the webcam feed (0=top, 1=bottom).
         """
         layout = self.monitor_manager.get_layout_info()
-        if not layout["top"] or not layout["bottom"]:
-            return None
+        cam_pos = self.monitor_manager.get_webcam_global_pos()
         
-        # Total height of the stack
-        total_h = layout["total_height"]
+        # Heuristic: 1 normalized unit in CV space ~ 500 pixels in vertical world space 
+        # (This will be refined once physical dimensions are added)
+        # eye_y_normalized=0.5 means eyes are level with the webcam.
+        eye_offset_px = (eye_y_normalized - 0.5) * 500
         
-        # Convert normalized eye Y to global pixel Y
-        # Note: In CV, Y=0 is top. In Screen, Y=0 is top of TOP monitor.
-        eye_y_pixel = eye_y_normalized * total_h
+        # Target Y is eye level (which is Webcam Y + eye offset)
+        target_y = cam_pos["y"] + eye_offset_px
         
-        # ESS is typically at eye level (y) and centered horizontally (x)
-        # We suggest a range: eye_y_pixel to eye_y_pixel + 200px
         return {
-            "center_x": layout["top"]["width"] // 2,
-            "target_y": int(eye_y_pixel),
-            "range_y": [int(eye_y_pixel), int(eye_y_pixel + 300)]
+            "center_x": cam_pos["x"],
+            "target_y": int(target_y),
+            "range_y": [int(target_y), int(target_y + 250)]
         }
 
 if __name__ == "__main__":

@@ -91,8 +91,12 @@ class CVWorker:
                 if distance and result['window'] and result['ess']:
                     # Use center of active window as point of interest
                     target_y = result['window']['y'] + (result['window']['height'] / 2)
+                    
                     # Convert eye normalized Y to global screen Y
-                    eye_y_pixel = eye_y * result['workspace']['total_height']
+                    # Relative to the webcam's global position
+                    cam_pos = self.monitor_manager.get_webcam_global_pos()
+                    eye_offset_px = (eye_y - 0.5) * 500 # Using the same heuristic as ESS
+                    eye_y_pixel = cam_pos["y"] + eye_offset_px
                     
                     angle = self.pipeline.posture_analyzer.calculate_viewing_angle(
                         eye_y_pixel, target_y, distance
