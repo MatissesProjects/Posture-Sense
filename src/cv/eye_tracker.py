@@ -19,6 +19,7 @@ class EyeTracker:
     def find_face_mesh(self, img):
         """Finds face mesh landmarks in the image."""
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_rgb = np.ascontiguousarray(img_rgb)
         self.results = self.face_mesh.process(img_rgb)
         return self.results
 

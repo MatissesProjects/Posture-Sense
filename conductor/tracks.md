@@ -7,7 +7,7 @@ The project is divided into four main tracks to ensure focused development and r
 | ID | Name | Description | Status | Link |
 | :--- | :--- | :--- | :--- | :--- |
 | **001** | [**Core CV Engine**](./tracks/001-core-cv/index.md) | Mediapipe integration, webcam capture, and basic joint tracking. | *Completed* | [Plan](./tracks/001-core-cv/plan.md) |
-| **002** | [**Posture Intelligence**](./tracks/002-posture-intelligence/index.md) | Scoring logic, neck/back alignment, sit/stand detection, and advanced joint/spine metrics. | *Not Started* | [Plan](./tracks/002-posture-intelligence/plan.md) |
+| **002** | [**Posture Intelligence**](./tracks/002-posture-intelligence/index.md) | Scoring logic, neck/back alignment, sit/stand detection, and advanced joint/spine metrics. | *Completed* | [Plan](./tracks/002-posture-intelligence/plan.md) |
 | **003** | [**Web Interface**](./tracks/003-web-interface/index.md) | React frontend and FastAPI backend for real-time user feedback and historical posture reporting. | *In Progress* | [Plan](./tracks/003-web-interface/plan.md) |
 | **004** | [**System Integration**](./tracks/004-system-monitor-integration/index.md) | Monitor layout detection, viewing angle optimization, and eye-tracking contextualization for Windows. | *Not Started* | [Plan](./tracks/004-system-monitor-integration/plan.md) |
 | **005** | [**Standardized Ergonomics**](./tracks/005-standardized-ergonomics/index.md) | Implementation of RULA/REBA scoring frameworks and industry-standard ergonomic metrics. | *Not Started* | [Plan](./tracks/005-standardized-ergonomics/plan.md) |

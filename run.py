@@ -17,6 +17,7 @@ def main():
     print("Controls:")
     print("  'q' : Quit")
     print("  'c' : Calibrate (Sit in your neutral/good posture)")
+    print("  'm' : Toggle Mirror Mode")
     
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -24,12 +25,16 @@ def main():
         return
 
     pipeline = CVPipeline()
+    mirror_mode = False
     
     while True:
         success, img = cap.read()
         if not success:
             print("Failed to capture image from webcam.")
             break
+        
+        if mirror_mode:
+            img = cv2.flip(img, 1)
         
         # Process the frame
         data = pipeline.process_frame(img)
@@ -42,6 +47,13 @@ def main():
                 color = (0, 255, 0) if analysis.get('score', 0) > 80 else (0, 165, 255)
                 cv2.circle(img, (cx, cy), 5, color, cv2.FILLED)
         
+        # Drawing Iris landmarks
+        if data['iris']:
+            for eye in ['left', 'right']:
+                for lm in data['iris'][eye]:
+                    cx, cy = int(lm['x']), int(lm['y'])
+                    cv2.circle(img, (cx, cy), 1, (255, 0, 0), cv2.FILLED)
+        
         # UI Overlays
         score = analysis.get('score', 0)
         feedback = analysis.get('feedback', "Detecting...")
@@ -49,7 +61,7 @@ def main():
         calibrated = analysis.get('calibrated', False)
         
         # Background for text
-        cv2.rectangle(img, (10, 10), (450, 120), (0, 0, 0), -1)
+        cv2.rectangle(img, (10, 10), (500, 130), (0, 0, 0), -1)
         
         # Score Text
         score_color = (0, 255, 0) if score > 85 else (0, 255, 255) if score > 65 else (0, 0, 255)
@@ -57,11 +69,12 @@ def main():
         
         # Status Text
         mode = "Standing" if is_standing else "Sitting"
-        cal_status = "Calibrated" if calibrated else "NOT CALIBRATED ('c' to calibrate)"
-        cv2.putText(img, f"Mode: {mode} | {cal_status}", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        mirror_status = "Mirrored" if mirror_mode else "Standard"
+        cal_status = "Calibrated" if calibrated else "NOT CALIBRATED ('c')"
+        cv2.putText(img, f"Mode: {mode} | {mirror_status} | {cal_status}", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
         # Feedback Text
-        cv2.putText(img, feedback, (20, 105), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 255, 200), 1)
+        cv2.putText(img, feedback, (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 255, 200), 1)
 
         # Show the result
         cv2.imshow("Posture-Sense - Track 002 Test", img)
@@ -77,6 +90,9 @@ def main():
                     print("Calibration complete!")
                 else:
                     print("Calibration failed. Ensure you are in frame.")
+        elif key == ord('m'):
+            mirror_mode = not mirror_mode
+            print(f"Mirror Mode: {mirror_mode}")
     
     cap.release()
     cv2.destroyAllWindows()
