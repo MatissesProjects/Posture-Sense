@@ -40,6 +40,16 @@ export default function PostureDashboard() {
   const angle = data?.analysis?.viewing_angle || 0;
   const lookingAt = data?.analysis?.looking_at || "center_overlap";
   const nudge = data?.analysis?.nudge || null;
+  const blinkRate = data?.analysis?.blink_rate || 0;
+  const sessionDuration = data?.analysis?.session_duration || 0;
+  const eyeStrainWarning = data?.analysis?.eye_strain_warning || null;
+
+  // Format session time (MM:SS)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
@@ -96,7 +106,7 @@ export default function PostureDashboard() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <MetricCard 
               icon={<Activity className="text-blue-400" />} 
               label="Mode" 
@@ -113,20 +123,39 @@ export default function PostureDashboard() {
               value={`${angle}°`} 
             />
             <MetricCard 
+              icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} 
+              label="Blink Rate" 
+              value={`${blinkRate} /min`} 
+            />
+            <MetricCard 
+              icon={<Settings className="text-slate-400" />} 
+              label="Session" 
+              value={formatTime(sessionDuration)} 
+            />
+            <MetricCard 
               icon={<Settings className="text-purple-400" />} 
               label="Status" 
               value={calibrated ? "Calibrated" : "Raw"} 
             />
           </div>
 
-          {/* Placement Suggestion Bar */}
-          <div className={`p-4 rounded-xl border flex items-center gap-4 transition-all duration-500 ${
-            placementSuggestion.includes("Perfect") 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-              : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-          }`}>
-            {placementSuggestion.includes("Perfect") ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-            <span className="font-semibold text-lg">{placementSuggestion}</span>
+          {/* Warnings Bar */}
+          <div className="flex flex-col gap-2">
+            {eyeStrainWarning && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-semibold">{eyeStrainWarning}</span>
+              </div>
+            )}
+            
+            <div className={`p-4 rounded-xl border flex items-center gap-4 transition-all duration-500 ${
+              placementSuggestion.includes("Perfect") 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+            }`}>
+              {placementSuggestion.includes("Perfect") ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+              <span className="font-semibold text-lg">{placementSuggestion}</span>
+            </div>
           </div>
         </div>
 

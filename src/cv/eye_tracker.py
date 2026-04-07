@@ -86,6 +86,31 @@ class EyeTracker:
             "roll": round(roll, 2)
         }
 
+    def get_blink_status(self):
+        """
+        Detects if eyes are currently closed using EAR (Eye Aspect Ratio).
+        """
+        if not self.results or not self.results.multi_face_landmarks:
+            return False
+            
+        face_lms = self.results.multi_face_landmarks[0].landmark
+        
+        def calculate_ear(top, bottom, left, right):
+            # Vertical distance
+            v_dist = np.sqrt((top.x - bottom.x)**2 + (top.y - bottom.y)**2)
+            # Horizontal distance
+            h_dist = np.sqrt((left.x - right.x)**2 + (left.y - right.y)**2)
+            return v_dist / h_dist if h_dist != 0 else 0
+
+        # Left Eye EAR
+        l_ear = calculate_ear(face_lms[159], face_lms[145], face_lms[33], face_lms[133])
+        # Right Eye EAR
+        r_ear = calculate_ear(face_lms[386], face_lms[374], face_lms[263], face_lms[362])
+        
+        avg_ear = (l_ear + r_ear) / 2
+        # Threshold for closed eye is usually < 0.2
+        return avg_ear < 0.18
+
     def get_gaze_ratio(self, iris_data, img_w, img_h):
         """
         Calculates a vertical and horizontal gaze ratio, 
@@ -117,9 +142,10 @@ class EyeTracker:
         
         # 3. Combine signals for vertical projection
         # Head pitch is a much stronger indicator for stacked monitors
-        # Neutral pitch is around 0.35. Looking UP (< 0.35) should decrease Y.
-        # We amplify the pitch signal to span the monitor height.
-        combined_y = 0.5 + (head_pitch_ratio - 0.35) * 4.0 + (v_iris_ratio - 0.5) * 0.5
+        # Neutral pitch (~0.35) should map to 0.5 (the webcam level / monitor seam)
+        # Looking UP (< 0.35) decreases Y, looking DOWN (> 0.35) increases Y.
+        # Reduced multiplier from 4.0 to 2.5 to keep it on screen.
+        combined_y = 0.5 + (head_pitch_ratio - 0.35) * 2.5 + (v_iris_ratio - 0.5) * 0.4
         
         return {
             "x": round(h_iris_ratio, 3), 

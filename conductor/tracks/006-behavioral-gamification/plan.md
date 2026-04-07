@@ -6,8 +6,9 @@
 - [x] Design "Corrective Nudges" that appear in the dashboard.
 
 ## Phase 2: Eye Fatigue & 20-20-20 Rule
-- [ ] Implement a 20-20-20 rule timer (look 20 feet away for 20 seconds every 20 mins).
-- [ ] Use eye tracking to detect blink rate drops (indicator of intense focus/eye strain).
+- [x] Implement EAR-based blink detection in `EyeTracker`.
+- [x] Track blink rate and generate warnings for low rates (< 10/min).
+- [x] Implement a session timer for the 20-20-20 rule.
 
 ## Phase 3: Gamification & Habits
 - [ ] Implement a "Posture Streak" counter (days with high average scores).

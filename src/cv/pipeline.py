@@ -23,6 +23,7 @@ class CVPipeline:
         iris_lms = self.eye_tracker.get_iris_landmarks(w, h)
         gaze_ratio = self.eye_tracker.get_gaze_ratio(iris_lms, w, h)
         head_pose = self.eye_tracker.get_head_pose()
+        is_blinking = self.eye_tracker.get_blink_status()
         
         # Posture Analysis
         analysis = self.posture_analyzer.analyze(pose_lms, iris_lms)
@@ -32,6 +33,7 @@ class CVPipeline:
             "iris": iris_lms,
             "gaze_ratio": gaze_ratio,
             "head_pose": head_pose,
+            "is_blinking": is_blinking,
             "analysis": analysis,
             "resolution": {"width": w, "height": h}
         }
