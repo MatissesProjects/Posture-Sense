@@ -28,7 +28,7 @@ class CVWorker:
         self.mirror_mode = False
         self.last_result = None
         
-        # Behavioral Tracking (Track 006)
+        # Behavioral Tracking
         self.slouch_start_time = None
         self.slouch_duration = 0
         
@@ -39,22 +39,19 @@ class CVWorker:
         self.last_blink_state = False
         self.blink_timestamps = [] 
 
-        # --- Movement & Movement Breaks (Track 009) ---
+        # Movement Tracking
         self.last_pose_landmarks = None
         self.last_movement_time = time.time()
         self.static_duration = 0
-        self.MOVEMENT_THRESHOLD = 0.015 # Landmark variance to count as "moved"
+        self.MOVEMENT_THRESHOLD = 0.015
 
         # Stats Interval
         self.last_stats_record_time = time.time()
 
     def start(self):
-        """ Starts the CV processing thread. """
         if self.is_running: return
         self.cap = cv2.VideoCapture(self.camera_id)
-        if not self.cap.isOpened():
-            logger.error(f"Could not open camera {self.camera_id}")
-            return False
+        if not self.cap.isOpened(): return False
         self.is_running = True
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -80,10 +77,8 @@ class CVWorker:
         return info
 
     def _sanitize_data(self, data):
-        if isinstance(data, dict):
-            return {k: self._sanitize_data(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [self._sanitize_data(v) for v in data]
+        if isinstance(data, dict): return {k: self._sanitize_data(v) for k, v in data.items()}
+        elif isinstance(data, list): return [self._sanitize_data(v) for v in data]
         elif isinstance(data, np.bool_): return bool(data)
         elif isinstance(data, np.integer): return int(data)
         elif isinstance(data, np.floating): return float(data)
@@ -92,10 +87,8 @@ class CVWorker:
     def _run(self):
         while self.is_running:
             success, frame = self.cap.read()
-            if not success:
-                time.sleep(0.1); continue
-            if self.mirror_mode:
-                frame = cv2.flip(frame, 1)
+            if not success: time.sleep(0.1); continue
+            if self.mirror_mode: frame = cv2.flip(frame, 1)
             
             result = self.pipeline.process_frame(frame)
             result['workspace'] = self.get_layout_info()
@@ -107,27 +100,21 @@ class CVWorker:
                 eye_y = pose['nose']['y']
                 result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
                 
-                # --- Track 009: Movement Detection ---
+                # --- Movement ---
                 if self.last_pose_landmarks:
-                    # Check if nose and shoulders have moved significantly
                     move_dist = 0
                     for key in ['nose', 'left_shoulder', 'right_shoulder']:
                         move_dist += np.sqrt((pose[key]['x'] - self.last_pose_landmarks[key]['x'])**2 + 
                                            (pose[key]['y'] - self.last_pose_landmarks[key]['y'])**2)
-                    
-                    if move_dist > self.MOVEMENT_THRESHOLD:
-                        self.last_movement_time = now
+                    if move_dist > self.MOVEMENT_THRESHOLD: self.last_movement_time = now
                 
                 self.last_pose_landmarks = pose.copy()
                 self.static_duration = now - self.last_movement_time
                 result['analysis']['static_duration'] = round(self.static_duration, 1)
 
-                # --- Track 006: Adaptive Thresholding & Behavioral ---
+                # --- Behavior & Adaptive ---
                 score = result['analysis'].get('score', 100)
                 app_age = self.stats_manager.get_app_age_days()
-                
-                # Adaptive Threshold: For the first 14 days, be more lenient
-                # Threshold starts at 50% and climbs to 75% over 2 weeks
                 current_threshold = min(75, 50 + (app_age * 2))
                 
                 if score < current_threshold:
@@ -139,19 +126,20 @@ class CVWorker:
                 
                 result['analysis']['slouch_duration'] = round(self.slouch_duration, 1)
                 
-                # Nudges & Notifications
+                # Alerts
                 if self.slouch_duration > 10:
                     msg = "⚠️ Posture Check: Take a deep breath and realign."
                     result['analysis']['nudge'] = msg
+                    result['analysis']['stretch_type'] = "realign"
                     self.notification_manager.notify("Posture-Sense", msg, "slouch")
 
-                # Movement Break Nudge (20 minutes of static posture)
                 if self.static_duration > 1200: # 20 mins
-                    msg = "🔄 Movement Break: You've been stationary for 20m. Try a shoulder roll or thoracic stretch!"
+                    msg = "🔄 Movement Break: Try a shoulder roll or thoracic stretch!"
                     result['analysis']['nudge'] = msg
+                    result['analysis']['stretch_type'] = "thoracic_extension"
                     self.notification_manager.notify("Movement Break", msg, "movement")
 
-                # Blink Detection & Eye Strain
+                # --- Eye Strain ---
                 is_blinking = result.get('is_blinking', False)
                 if is_blinking and not self.last_blink_state:
                     self.blink_count += 1
@@ -166,31 +154,27 @@ class CVWorker:
                     result['analysis']['eye_strain_warning'] = msg
                     self.notification_manager.notify("Eye Strain", msg, "blink")
 
-                # 20-20-20 Rule Timer
                 time_since_break = now - self.last_break_time
                 result['analysis']['session_duration'] = round(time_since_break, 0)
                 if time_since_break > 1200:
                     msg = "👁️ 20-20-20 RULE: Look 20 feet away for 20 seconds!"
                     result['analysis']['nudge'] = msg
+                    result['analysis']['stretch_type'] = "vision_recovery"
                     self.notification_manager.notify("Break Time", msg, "break")
 
-                # Stats Recording
+                # Stats
                 if now - self.last_stats_record_time > 60:
                     self.stats_manager.record_minute(score)
                     self.last_stats_record_time = now
                 result['analysis']['stats'] = self.stats_manager.get_summary()
 
-                # Window Placement
+                # Window
                 ess_y = result['ess']['target_y']
                 target_y = result['window']['y'] + (result['window']['height'] / 2) if result['window'] else 0
-                if target_y < ess_y - 150:
-                    result['analysis']['placement_suggestion'] = "Move active window DOWN for better neck alignment."
-                elif target_y > ess_y + 150:
-                    result['analysis']['placement_suggestion'] = "Move active window UP for better neck alignment."
-                else:
-                    result['analysis']['placement_suggestion'] = "Window is in the Ergonomic Sweet Spot."
+                if target_y < ess_y - 150: result['analysis']['placement_suggestion'] = "Move active window DOWN."
+                elif target_y > ess_y + 150: result['analysis']['placement_suggestion'] = "Move active window UP."
+                else: result['analysis']['placement_suggestion'] = "Window is in the Ergonomic Sweet Spot."
             else:
-                # User Not Detected
                 self.slouch_start_time = None
                 self.slouch_duration = 0
                 self.static_duration = 0

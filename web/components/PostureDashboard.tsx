@@ -2,13 +2,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
-import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, User, Smile, Meh, Frown, Volume2, VolumeX, Timer, Eye } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
   const [calibrating, setCalibrating] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const lastNudgeRef = useRef<string | null>(null);
+
+  // Guided Stretch State
+  const [activeStretch, setActiveStretch] = useState<string | null>(null);
+  const [stretchTimer, setStretchTimer] = useState(0);
 
   const handleCalibrate = async () => {
     setCalibrating(true);
@@ -41,12 +45,13 @@ export default function PostureDashboard() {
   const distance = analysis.distance_cm || 0;
   const angle = analysis.viewing_angle || 0;
   const nudge = analysis.nudge || null;
+  const stretchType = analysis.stretch_type || null;
   const blinkRate = analysis.blink_rate || 0;
   const sessionDuration = analysis.session_duration || 0;
   const eyeStrainWarning = analysis.eye_strain_warning || null;
   const stats = analysis.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
 
-  // Sound and Title Alerts
+  // Track 006: Sound and Title Alerts
   useEffect(() => {
     if (nudge && nudge !== lastNudgeRef.current) {
       if (soundEnabled) {
@@ -82,6 +87,23 @@ export default function PostureDashboard() {
     }
   }, [nudge, soundEnabled]);
 
+  // Track 009: Guided Stretch Timer
+  useEffect(() => {
+    if (stretchType && !activeStretch) {
+      setActiveStretch(stretchType);
+      setStretchTimer(20);
+    }
+  }, [stretchType, activeStretch]);
+
+  useEffect(() => {
+    if (stretchTimer > 0) {
+      const t = setTimeout(() => setStretchTimer(stretchTimer - 1), 1000);
+      return () => clearTimeout(t);
+    } else if (activeStretch && stretchTimer === 0) {
+      setActiveStretch(null);
+    }
+  }, [stretchTimer, activeStretch]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -90,7 +112,37 @@ export default function PostureDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-      {nudge && (
+      
+      {/* Track 009: Guided Stretch Overlay */}
+      {activeStretch && (
+        <div className="fixed inset-0 z-[100] bg-indigo-900/95 flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
+          <div className="bg-slate-900 p-12 rounded-[3rem] border-4 border-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.5)] max-w-2xl w-full">
+            <Timer className="w-20 h-20 text-indigo-400 mb-6 mx-auto animate-pulse" />
+            <h2 className="text-5xl font-black mb-4 uppercase tracking-tighter">
+              {activeStretch === "vision_recovery" ? "Look Away!" : "Movement Break"}
+            </h2>
+            <div className="text-2xl font-medium text-slate-300 mb-10 leading-relaxed">
+              {activeStretch === "vision_recovery" 
+                ? "Look at something 20 feet away to rest your eyes." 
+                : activeStretch === "thoracic_extension"
+                ? "Perform a thoracic extension: stretch your mid-back over your chair."
+                : "Take a deep breath and realign your spine."}
+            </div>
+            <div className="text-8xl font-black text-white tabular-nums">
+              {stretchTimer}s
+            </div>
+            <button 
+              onClick={() => setActiveStretch(null)}
+              className="mt-10 text-slate-500 hover:text-white transition-colors uppercase text-sm font-bold tracking-widest"
+            >
+              Skip Break
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Track 006: Nudge Alert */}
+      {nudge && !activeStretch && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
           <AlertCircle className="w-8 h-8" />
           {nudge}
@@ -110,7 +162,10 @@ export default function PostureDashboard() {
           </div>
         </div>
         <div className="flex gap-4">
-          <button onClick={handleToggleMirror} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all">
+          <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-2 rounded-lg border transition-all ${soundEnabled ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
+          <button onClick={handleToggleMirror} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all border border-slate-700">
             <Maximize2 className="w-4 h-4" /> Mirror
           </button>
           <button 
