@@ -80,18 +80,21 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
     if (data.workspace && data.workspace.monitors && data.workspace.webcam_global_pos) {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
-      const { monitors, webcam_global_pos } = data.workspace;
-      const camViewCenter = { x: 0.5, y: 0.5 }; // Assume physical webcam is at center of image
+      const { monitors, webcam_global_pos, mirror_mode } = data.workspace;
+      const camViewCenter = { x: 0.5, y: 0.5 };
 
       monitors.forEach((m: any) => {
-        // Project relative to the webcam position
-        // Scale: roughly 1000px screen distance = 0.4 normalized units in image
         const projScale = 0.0004; 
         
-        const relX = (m.x - webcam_global_pos.x) * projScale;
+        let relX = (m.x - webcam_global_pos.x) * projScale;
         const relY = (m.y - webcam_global_pos.y) * projScale;
         const mW = m.width * projScale;
         const mH = m.height * projScale;
+
+        // Flip X if mirrored
+        if (mirror_mode) {
+          relX = -relX - mW;
+        }
 
         const drawX = (camViewCenter.x + relX) * w;
         const drawY = (camViewCenter.y + relY) * h;
@@ -102,7 +105,6 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
         ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.fillRect(drawX, drawY, drawW, drawH);
         
-        // Label
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.font = '10px sans-serif';
         ctx.fillText(`M${m.id}`, drawX + 5, drawY + 15);
@@ -111,9 +113,11 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
 
     // --- Draw Gaze Point ---
     if (analysis && analysis.gaze_point) {
-      const { x, y } = analysis.gaze_point;
-      // Map normalized gaze (relative to eye) to full canvas
-      // This is a rough projection for visualization
+      let { x, y } = analysis.gaze_point;
+      const isMirrored = data.workspace?.mirror_mode;
+
+      // If mirrored, the normalized X from MP is already relative to the flipped frame
+      // But we need to ensure the crosshair follows the visual face
       const gazeX = x * w;
       const gazeY = y * h;
 

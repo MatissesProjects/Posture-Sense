@@ -59,6 +59,12 @@ class CVWorker:
             return self.pipeline.posture_analyzer.calibrate(self.last_result['pose'])
         return False
 
+    def get_layout_info(self):
+        """ Returns the full workspace model for the UI. """
+        info = self.monitor_manager.get_layout_info()
+        info["mirror_mode"] = self.mirror_mode
+        return info
+
     def _run(self):
         """ The internal loop that captures and processes frames. """
         while self.is_running:

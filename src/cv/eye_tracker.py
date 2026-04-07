@@ -117,8 +117,9 @@ class EyeTracker:
         
         # 3. Combine signals for vertical projection
         # Head pitch is a much stronger indicator for stacked monitors
-        # We'll normalize head_pitch so 0.35 is neutral, < 0.3 is UP, > 0.4 is DOWN
-        combined_y = v_iris_ratio * 0.3 + (head_pitch_ratio - 0.1) * 1.5
+        # Neutral pitch is around 0.35. Looking UP (< 0.35) should decrease Y.
+        # We amplify the pitch signal to span the monitor height.
+        combined_y = 0.5 + (head_pitch_ratio - 0.35) * 4.0 + (v_iris_ratio - 0.5) * 0.5
         
         return {
             "x": round(h_iris_ratio, 3), 
