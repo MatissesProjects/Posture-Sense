@@ -2,7 +2,11 @@ mediapipe
 opencv-python
 numpy
 fastapi
-uvicorn
+uvicorn[standard]
+websockets
 screeninfo
 pywin32
 pytest
+python-dotenv
+watchfiles
+httptools
