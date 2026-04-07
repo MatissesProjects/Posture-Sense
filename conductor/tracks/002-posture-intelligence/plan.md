@@ -12,6 +12,12 @@
 - [ ] Design a detection mechanism based on head height relative to shoulders/webcam.
 - [ ] Add an interface to manually toggle/input sit-stand status for calibration.
 
-## Phase 4: Feedback Generation
+## Phase 4: Feedback & Severity Logic
 - [ ] Define score-based thresholds for feedback (e.g., "Adjust monitor height").
-- [ ] Create a "Correction Prompt" generator for the UI.
+- [ ] Implement **Severity Levels** (Low, Medium, High Risk) for each postural issue.
+- [ ] Create a **Specific Remediation Tip** generator (e.g., "Raise your screen," "Keep elbows at 90°").
+
+## Phase 5: Advanced Posture Metrics
+- [ ] **Elbow/Wrist Angle**: Extract landmarks 13-16 to assess typing/interaction strain.
+- [ ] **Spine Curvature/Torso Angle**: Calculate angles using Hip -> Mid-Back -> Neck points for slouching detection.
+- [ ] **Head Tilt/Rotation**: Implement precise 3D head orientation relative to the vertical axis.
