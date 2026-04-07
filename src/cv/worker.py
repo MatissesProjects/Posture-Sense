@@ -5,6 +5,7 @@ import logging
 from src.cv.pipeline import CVPipeline
 from src.system.monitor_manager import MonitorManager
 from src.system.window_manager import WindowManager
+from src.intelligence.stats_manager import StatsManager
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class CVWorker:
         self.pipeline = CVPipeline()
         self.monitor_manager = MonitorManager()
         self.window_manager = WindowManager(self.monitor_manager)
+        self.stats_manager = StatsManager()
         self.cap = None
         self.is_running = False
         self.thread = None
@@ -32,7 +34,10 @@ class CVWorker:
         self.last_break_time = time.time()
         self.blink_count = 0
         self.last_blink_state = False
-        self.blink_timestamps = [] # Store last 60 seconds of blinks
+        self.blink_timestamps = [] 
+
+        # Stats Interval
+        self.last_stats_record_time = time.time()
 
     def start(self):
         """ Starts the CV processing thread. """
@@ -161,6 +166,13 @@ class CVWorker:
                         result['analysis']['nudge'] = "👁️ 20-20-20 RULE: Look 20 feet away for 20 seconds!"
                         # Reset break timer if user looks away or closes app (simplified for now)
                         # self.last_break_time = now 
+
+                    # --- Stats & Summary (Track 006) ---
+                    if now - self.last_stats_record_time > 60:
+                        self.stats_manager.record_minute(score)
+                        self.last_stats_record_time = now
+                    
+                    result['analysis']['stats'] = self.stats_manager.get_summary()
 
                     # Window Placement Suggestion
                     ess_y = result['ess']['target_y']

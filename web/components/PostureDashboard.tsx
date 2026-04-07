@@ -2,34 +2,13 @@
 
 import React, { useState } from 'react';
 import PostureCanvas from './PostureCanvas';
-import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, User, Smile, Meh, Frown } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
   const [calibrating, setCalibrating] = useState(false);
 
-  const handleCalibrate = async () => {
-    setCalibrating(true);
-    try {
-      const res = await fetch('http://127.0.0.1:8000/api/calibrate', { method: 'POST' });
-      const result = await res.json();
-      if (result.success) {
-        // Show success toast or feedback
-      }
-    } catch (err) {
-      console.error('Calibration failed', err);
-    } finally {
-      setTimeout(() => setCalibrating(false), 1000);
-    }
-  };
-
-  const handleToggleMirror = async () => {
-    try {
-      await fetch('http://127.0.0.1:8000/api/toggle-mirror', { method: 'POST' });
-    } catch (err) {
-      console.error('Toggle mirror failed', err);
-    }
-  };
+  // ... (handlers) ...
 
   const score = data?.analysis?.score || 0;
   const feedback = data?.analysis?.feedback || "Initializing...";
@@ -43,68 +22,93 @@ export default function PostureDashboard() {
   const blinkRate = data?.analysis?.blink_rate || 0;
   const sessionDuration = data?.analysis?.session_duration || 0;
   const eyeStrainWarning = data?.analysis?.eye_strain_warning || null;
+  const stats = data?.analysis?.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
 
-  // Format session time (MM:SS)
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // ... (formatTime) ...
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-      {/* Track 006: Nudge Alert */}
-      {nudge && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
-          <AlertCircle className="w-8 h-8" />
-          {nudge}
-        </div>
-      )}
+      {/* ... (nudge alert) ... */}
 
       <header className="max-w-7xl mx-auto flex justify-between items-center mb-10">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-500/20">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Posture-Sense</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Posture-Sense</h1>
+            <div className="flex items-center gap-2 text-orange-500 text-xs font-bold uppercase tracking-widest mt-1">
+              <Flame className="w-3 h-3 fill-current" /> {stats.streak} DAY STREAK
+            </div>
+          </div>
         </div>
-        <div className="flex gap-4">
-          <button 
-            onClick={handleToggleMirror}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all"
-          >
-            <Maximize2 className="w-4 h-4" /> Mirror
-          </button>
-          <button 
-            onClick={handleCalibrate}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg ${
-              calibrating 
-                ? 'bg-indigo-900 cursor-wait' 
-                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'
-            }`}
-          >
-            <RefreshCw className={`w-4 h-4 ${calibrating ? 'animate-spin' : ''}`} />
-            {calibrating ? 'Calibrating...' : 'Calibrate'}
-          </button>
-        </div>
+        {/* ... (buttons) ... */}
       </header>
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Visualizers */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Skeleton Canvas */}
-            <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm">
+            {/* Visualizer and Avatar */}
+            <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative group">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Live Tracker</h3>
               <PostureCanvas onData={setData} />
+              
+              {/* Reactive Avatar */}
+              <div className="absolute bottom-8 right-8 bg-slate-900/90 p-3 rounded-full border border-slate-700 shadow-2xl transition-all group-hover:scale-110">
+                <PostureAvatar score={score} />
+              </div>
             </div>
 
-            {/* Monitor Layout Visualizer */}
-            <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col">
-              <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Workspace Geometry</h3>
-              <WorkspaceVisualizer data={data} />
+            {/* Monitor Layout */}
+            {/* ... */}
+          </div>
+          
+          {/* Metrics */}
+          {/* ... */}
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-indigo-600/10 border border-indigo-500/20 p-4 rounded-xl flex items-center gap-4">
+              <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
+                <Target className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-[10px] text-indigo-300/60 font-bold uppercase">Daily Goal</div>
+                <div className="text-lg font-bold text-indigo-200">{stats.today_ergonomic_minutes} / 60 <span className="text-xs font-normal">min</span></div>
+              </div>
+            </div>
+            <div className="bg-emerald-600/10 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-4">
+              <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-[10px] text-emerald-300/60 font-bold uppercase">Today's Avg</div>
+                <div className="text-lg font-bold text-emerald-200">{stats.today_avg_score}%</div>
+              </div>
+            </div>
+            <div className="bg-amber-600/10 border border-amber-500/20 p-4 rounded-xl flex items-center gap-4">
+              <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400">
+                <Flame className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-[10px] text-amber-300/60 font-bold uppercase">All-Time Ergonomic</div>
+                <div className="text-lg font-bold text-amber-200">{stats.total_ergonomic_minutes} <span className="text-xs font-normal">min</span></div>
+              </div>
             </div>
           </div>
+        </div>
+        {/* ... (Right Column) ... */}
+      </main>
+    </div>
+  );
+}
+
+function PostureAvatar({ score }: { score: number }) {
+  if (score > 85) return <Smile className="w-10 h-10 text-emerald-400 animate-pulse" />;
+  if (score > 65) return <Meh className="w-10 h-10 text-amber-400" />;
+  return <Frown className="w-10 h-10 text-rose-500 animate-bounce" />;
+}
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <MetricCard 
