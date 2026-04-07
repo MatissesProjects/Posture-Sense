@@ -2,14 +2,16 @@ import cv2
 import json
 from src.cv.pose_detector import PoseDetector
 from src.cv.eye_tracker import EyeTracker
+from src.intelligence.posture_analyzer import PostureAnalyzer
 
 class CVPipeline:
     def __init__(self):
         self.pose_detector = PoseDetector()
         self.eye_tracker = EyeTracker()
+        self.posture_analyzer = PostureAnalyzer()
 
     def process_frame(self, img):
-        """Processes a single frame and returns all landmark data."""
+        """Processes a single frame and returns all landmark data and analysis."""
         h, w, _ = img.shape
         
         # Pose detection
@@ -20,13 +22,23 @@ class CVPipeline:
         self.eye_tracker.find_face_mesh(img)
         iris_lms = self.eye_tracker.get_iris_landmarks(w, h)
         
+        # Posture Analysis
+        analysis = self.posture_analyzer.analyze(pose_lms)
+        
         data = {
             "pose": pose_lms,
             "iris": iris_lms,
+            "analysis": analysis,
             "resolution": {"width": w, "height": h}
         }
         
         return data
+
+    def calibrate(self):
+        """Triggers calibration on the next processed frame (if pose detected)."""
+        # This is a bit tricky with the current structure. 
+        # For now, we'll just have run.py call it directly if it has pose data.
+        pass
 
     def to_json(self, data):
         """Serializes the data structure to JSON."""
