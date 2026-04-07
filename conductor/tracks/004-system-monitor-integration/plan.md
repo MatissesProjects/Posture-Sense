@@ -7,8 +7,8 @@
 - [ ] **Monitor Geometry Input**: Allow users to input physical dimensions (cm/inches) for accurate distance calculations.
 
 ## Phase 2: Active Window Tracking
-- [ ] Use `pygetwindow` to track the "active" window's position.
-- [ ] Implement a function to calculate the "Ergonomic Sweet Spot" (ESS) on the stacked monitors.
+- [x] Use `pygetwindow` to track the "active" window's position.
+- [x] Implement a function to calculate the "Ergonomic Sweet Spot" (ESS) on the stacked monitors.
 
 ## Phase 3: Viewing Angle & Distance Calculation
 - [ ] Implement logic to calculate **Viewing Angle** ($\theta$) between the user's eyes and the active text area.

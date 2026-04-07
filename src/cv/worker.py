@@ -4,6 +4,7 @@ import time
 import logging
 from src.cv.pipeline import CVPipeline
 from src.system.monitor_manager import MonitorManager
+from src.system.window_manager import WindowManager
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ class CVWorker:
         self.callback = callback
         self.pipeline = CVPipeline()
         self.monitor_manager = MonitorManager()
+        self.window_manager = WindowManager(self.monitor_manager)
         self.cap = None
         self.is_running = False
         self.thread = None
@@ -74,6 +76,12 @@ class CVWorker:
             
             # Add workspace context
             result['workspace'] = self.monitor_manager.get_layout_info()
+            result['window'] = self.window_manager.get_active_window_info()
+            
+            # Calculate ESS based on eye level
+            if result.get('pose') and 'nose' in result['pose']:
+                eye_y = result['pose']['nose']['y'] # Use nose as proxy for eye level
+                result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
             
             self.last_result = result
             
