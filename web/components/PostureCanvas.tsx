@@ -72,11 +72,57 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const { pose, iris } = data;
+    const { pose, iris, analysis } = data;
     const w = canvas.width;
     const h = canvas.height;
 
-    // Draw Pose Connections
+    // --- Draw Virtual Monitors (Back-projected) ---
+    if (data.workspace && data.workspace.monitors) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      const { monitors, bounds } = data.workspace;
+      const camPos = { x: 0.5, y: 0.5 }; // Assume webcam is center of view
+
+      monitors.forEach((m: any) => {
+        // Simple heuristic projection: map screen bounds to a portion of the CV view
+        // centered around the assume camera position.
+        const projScale = 0.4 / Math.max(bounds.width, bounds.height);
+        const mX = camPos.x + (m.x - (bounds.min_x + bounds.width/2)) * projScale;
+        const mY = camPos.y + (m.y - (bounds.min_y + bounds.height/2)) * projScale;
+        const mW = m.width * projScale;
+        const mH = m.height * projScale;
+
+        ctx.strokeRect(mX * w, mY * h, mW * w, mH * h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(mX * w, mY * h, mW * w, mH * h);
+      });
+    }
+
+    // --- Draw Gaze Point ---
+    if (analysis && analysis.gaze_point) {
+      const { x, y } = analysis.gaze_point;
+      // Map normalized gaze (relative to eye) to full canvas
+      // This is a rough projection for visualization
+      const gazeX = x * w;
+      const gazeY = y * h;
+
+      ctx.strokeStyle = '#f43f5e'; // Rose-500
+      ctx.lineWidth = 2;
+      // Crosshair
+      ctx.beginPath();
+      ctx.moveTo(gazeX - 15, gazeY);
+      ctx.lineTo(gazeX + 15, gazeY);
+      ctx.moveTo(gazeX, gazeY - 15);
+      ctx.lineTo(gazeX, gazeY + 15);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(gazeX, gazeY, 4, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // --- Draw Pose Connections ---
     ctx.strokeStyle = '#4ade80'; // Green-400
     ctx.lineWidth = 3;
 

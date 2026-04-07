@@ -54,26 +54,34 @@ class EyeTracker:
 
     def get_gaze_ratio(self, iris_data, img_w, img_h):
         """
-        Calculates a vertical gaze ratio to detect if looking up/down.
-        Returns a value where > 0.5 is looking down, < 0.5 is looking up.
+        Calculates a vertical and horizontal gaze ratio.
+        Returns a normalized point where (0.5, 0.5) is centered.
         """
         if not self.results or not self.results.multi_face_landmarks:
-            return 0.5
+            return {"x": 0.5, "y": 0.5}
             
         face_lms = self.results.multi_face_landmarks[0].landmark
         
-        # Vertical bounds for left eye (Top: 159, Bottom: 145)
-        top_lid = face_lms[159].y
-        bottom_lid = face_lms[145].y
+        # Reference points for Left Eye
+        # Vertical: Top (159), Bottom (145)
+        # Horizontal: Inner (133), Outer (33)
+        l_top = face_lms[159].y
+        l_bottom = face_lms[145].y
+        l_inner = face_lms[133].x
+        l_outer = face_lms[33].x
         
-        # Center of iris (Left: 468)
-        iris_center = face_lms[468].y
+        iris_center_y = face_lms[468].y
+        iris_center_x = face_lms[468].x
         
-        # Calculate ratio (0.0 at top lid, 1.0 at bottom lid)
-        if (bottom_lid - top_lid) == 0: return 0.5
-        vertical_ratio = (iris_center - top_lid) / (bottom_lid - top_lid)
+        # Calculate Ratios
+        # Vertical: 0.0 at top lid, 1.0 at bottom lid
+        v_ratio = (iris_center_y - l_top) / (l_bottom - l_top) if (l_bottom - l_top) != 0 else 0.5
         
-        return round(vertical_ratio, 3)
+        # Horizontal: 0.0 at outer, 1.0 at inner (for left eye front view)
+        # We'll normalize this so < 0.5 is looking LEFT, > 0.5 is looking RIGHT
+        h_ratio = (iris_center_x - l_outer) / (l_inner - l_outer) if (l_inner - l_outer) != 0 else 0.5
+        
+        return {"x": round(h_ratio, 3), "y": round(v_ratio, 3)}
 
 if __name__ == "__main__":
     cap = cv2.VideoCapture(0)

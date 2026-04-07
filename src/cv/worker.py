@@ -103,15 +103,16 @@ class CVWorker:
                     )
                     result['analysis']['viewing_angle'] = angle
 
-                    # Gaze Contextualization
-                    gaze = result.get('gaze_ratio', 0.5)
-                    # ratio < 0.4 is looking UP, > 0.6 is looking DOWN
-                    if gaze < 0.45:
-                        result['analysis']['looking_at'] = "top_monitor"
-                    elif gaze > 0.55:
-                        result['analysis']['looking_at'] = "bottom_monitor"
-                    else:
-                        result['analysis']['looking_at'] = "center_overlap"
+                    # Gaze Contextualization (Refined)
+                    gaze = result.get('gaze_ratio', {"x": 0.5, "y": 0.5})
+                    
+                    # Horizontal: < 0.45 Left, > 0.55 Right
+                    # Vertical: < 0.45 Up (Top Monitor), > 0.55 Down (Bottom Monitor)
+                    h_focus = "left" if gaze["x"] < 0.45 else "right" if gaze["x"] > 0.55 else "center"
+                    v_focus = "top" if gaze["y"] < 0.45 else "bottom" if gaze["y"] > 0.55 else "center"
+                    
+                    result['analysis']['looking_at'] = f"{v_focus}_{h_focus}"
+                    result['analysis']['gaze_point'] = gaze # Pass normalized point to UI
 
                     # Placement Suggestion
                     ess_y = result['ess']['target_y']
