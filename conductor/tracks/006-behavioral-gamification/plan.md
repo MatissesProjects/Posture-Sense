@@ -1,9 +1,9 @@
 # Implementation Plan: Track 006 - Behavioral Gamification
 
 ## Phase 1: Micro-Interventions
-- [ ] Implement subtle "Ghost Posture" overlays for the UI.
-- [ ] Create a non-intrusive desktop notification for slouching (after X seconds of low score).
-- [ ] Design "Corrective Nudges" that appear before pain manifests.
+- [x] Implement slouch duration tracking in `CVWorker`.
+- [x] Create a high-visibility desktop/UI alert for slouching (after 10 seconds).
+- [x] Design "Corrective Nudges" that appear in the dashboard.
 
 ## Phase 2: Eye Fatigue & 20-20-20 Rule
 - [ ] Implement a 20-20-20 rule timer (look 20 feet away for 20 seconds every 20 mins).

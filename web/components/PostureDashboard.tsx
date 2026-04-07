@@ -39,9 +39,18 @@ export default function PostureDashboard() {
   const distance = data?.analysis?.distance_cm || 0;
   const angle = data?.analysis?.viewing_angle || 0;
   const lookingAt = data?.analysis?.looking_at || "center_overlap";
+  const nudge = data?.analysis?.nudge || null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+      {/* Track 006: Nudge Alert */}
+      {nudge && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
+          <AlertCircle className="w-8 h-8" />
+          {nudge}
+        </div>
+      )}
+
       <header className="max-w-7xl mx-auto flex justify-between items-center mb-10">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-500/20">

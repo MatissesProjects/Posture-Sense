@@ -22,6 +22,10 @@ class CVWorker:
         self.thread = None
         self.mirror_mode = False
         self.last_result = None
+        
+        # Behavioral Tracking (Track 006)
+        self.slouch_start_time = None
+        self.slouch_duration = 0
 
     def start(self):
         """ Starts the CV processing thread. """
@@ -81,7 +85,7 @@ class CVWorker:
             result = self.pipeline.process_frame(frame)
             
             # Add workspace context
-            result['workspace'] = self.monitor_manager.get_layout_info()
+            result['workspace'] = self.get_layout_info()
             result['window'] = self.window_manager.get_active_window_info()
             
             # Calculate ESS, Distance, and Viewing Angle
@@ -99,9 +103,8 @@ class CVWorker:
                     target_y = result['window']['y'] + (result['window']['height'] / 2)
                     
                     # Convert eye normalized Y to global screen Y
-                    # Relative to the webcam's global position
                     cam_pos = self.monitor_manager.get_webcam_global_pos()
-                    eye_offset_px = (eye_y - 0.5) * 500 # Using the same heuristic as ESS
+                    eye_offset_px = (eye_y - 0.5) * 500 
                     eye_y_pixel = cam_pos["y"] + eye_offset_px
                     
                     angle = self.pipeline.posture_analyzer.calculate_viewing_angle(
@@ -111,18 +114,29 @@ class CVWorker:
 
                     # Gaze Contextualization (Refined)
                     gaze = result.get('gaze_ratio', {"x": 0.5, "y": 0.5})
-                    
-                    # Horizontal: < 0.45 Left, > 0.55 Right
-                    # Vertical: < 0.45 Up (Top Monitor), > 0.55 Down (Bottom Monitor)
                     h_focus = "left" if gaze["x"] < 0.45 else "right" if gaze["x"] > 0.55 else "center"
                     v_focus = "top" if gaze["y"] < 0.45 else "bottom" if gaze["y"] > 0.55 else "center"
-                    
                     result['analysis']['looking_at'] = f"{v_focus}_{h_focus}"
-                    result['analysis']['gaze_point'] = gaze # Pass normalized point to UI
+                    result['analysis']['gaze_point'] = gaze 
+
+                    # Behavioral Tracking (Track 006)
+                    score = result['analysis'].get('score', 100)
+                    if score < 70:
+                        if self.slouch_start_time is None:
+                            self.slouch_start_time = time.time()
+                        self.slouch_duration = time.time() - self.slouch_start_time
+                    else:
+                        self.slouch_start_time = None
+                        self.slouch_duration = 0
+                    
+                    result['analysis']['slouch_duration'] = round(self.slouch_duration, 1)
+                    
+                    # Trigger Nudge
+                    if self.slouch_duration > 10:
+                        result['analysis']['nudge'] = "⚠️ SIT UP: Slouching detected for too long."
 
                     # Placement Suggestion
                     ess_y = result['ess']['target_y']
-
                     if target_y < ess_y - 150:
                         result['analysis']['placement_suggestion'] = "Move active window DOWN for better neck alignment."
                     elif target_y > ess_y + 150:
