@@ -77,24 +77,35 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
     const h = canvas.height;
 
     // --- Draw Virtual Monitors (Back-projected) ---
-    if (data.workspace && data.workspace.monitors) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    if (data.workspace && data.workspace.monitors && data.workspace.webcam_global_pos) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
-      const { monitors, bounds } = data.workspace;
-      const camPos = { x: 0.5, y: 0.5 }; // Assume webcam is center of view
+      const { monitors, webcam_global_pos } = data.workspace;
+      const camViewCenter = { x: 0.5, y: 0.5 }; // Assume physical webcam is at center of image
 
       monitors.forEach((m: any) => {
-        // Simple heuristic projection: map screen bounds to a portion of the CV view
-        // centered around the assume camera position.
-        const projScale = 0.4 / Math.max(bounds.width, bounds.height);
-        const mX = camPos.x + (m.x - (bounds.min_x + bounds.width/2)) * projScale;
-        const mY = camPos.y + (m.y - (bounds.min_y + bounds.height/2)) * projScale;
+        // Project relative to the webcam position
+        // Scale: roughly 1000px screen distance = 0.4 normalized units in image
+        const projScale = 0.0004; 
+        
+        const relX = (m.x - webcam_global_pos.x) * projScale;
+        const relY = (m.y - webcam_global_pos.y) * projScale;
         const mW = m.width * projScale;
         const mH = m.height * projScale;
 
-        ctx.strokeRect(mX * w, mY * h, mW * w, mH * h);
+        const drawX = (camViewCenter.x + relX) * w;
+        const drawY = (camViewCenter.y + relY) * h;
+        const drawW = mW * w;
+        const drawH = mH * h;
+
+        ctx.strokeRect(drawX, drawY, drawW, drawH);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.fillRect(mX * w, mY * h, mW * w, mH * h);
+        ctx.fillRect(drawX, drawY, drawW, drawH);
+        
+        // Label
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`M${m.id}`, drawX + 5, drawY + 15);
       });
     }
 

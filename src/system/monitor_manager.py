@@ -83,6 +83,7 @@ class MonitorManager:
         return {
             "monitors": self.monitors,
             "webcam": self.webcam_config,
+            "webcam_global_pos": self.get_webcam_global_pos(),
             "bounds": self._get_total_bounds()
         }
 
