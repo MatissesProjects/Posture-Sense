@@ -99,8 +99,19 @@ class CVWorker:
                     )
                     result['analysis']['viewing_angle'] = angle
 
-                    # Placement Suggestion based on ESS
+                    # Gaze Contextualization
+                    gaze = result.get('gaze_ratio', 0.5)
+                    # ratio < 0.4 is looking UP, > 0.6 is looking DOWN
+                    if gaze < 0.45:
+                        result['analysis']['looking_at'] = "top_monitor"
+                    elif gaze > 0.55:
+                        result['analysis']['looking_at'] = "bottom_monitor"
+                    else:
+                        result['analysis']['looking_at'] = "center_overlap"
+
+                    # Placement Suggestion
                     ess_y = result['ess']['target_y']
+
                     if target_y < ess_y - 150:
                         result['analysis']['placement_suggestion'] = "Move active window DOWN for better neck alignment."
                     elif target_y > ess_y + 150:

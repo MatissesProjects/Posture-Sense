@@ -20,7 +20,7 @@
 - [x] Visualize the "Sweet Spot" on the dashboard UI.
 
 ## Phase 5: Advanced Integration & Context
-- [ ] **Eye-Tracking Contextualization**: Use gaze data to confirm if the user is looking at the primary or secondary monitor, adjusting warning urgency accordingly.
-- [ ] Implement detection of sustained posture vs. intentional movement.
-- [ ] Integrate "neutral baseline" calibration (as per Phase 4 of original plan).
-- [ ] Store/Log posture metrics over time for reporting.
+- [x] **Eye-Tracking Contextualization**: Use gaze data to confirm if the user is looking at the primary or secondary monitor, adjusting warning urgency accordingly.
+- [x] Implement detection of sustained posture vs. intentional movement.
+- [x] Integrate "neutral baseline" calibration (completed via worker).
+- [ ] Store/Log posture metrics over time for reporting (Moved to Track 007).

@@ -38,6 +38,7 @@ export default function PostureDashboard() {
   const calibrated = data?.analysis?.calibrated || false;
   const distance = data?.analysis?.distance_cm || 0;
   const angle = data?.analysis?.viewing_angle || 0;
+  const lookingAt = data?.analysis?.looking_at || "center_overlap";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">

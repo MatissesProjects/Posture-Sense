@@ -52,20 +52,28 @@ class EyeTracker:
         
         return iris_data
 
-    def get_gaze_ratio(self, iris_data):
-        """Calculates a simple gaze ratio (horizontal and vertical)."""
-        # This is a placeholder for more complex gaze vector logic.
-        # It currently just returns the center of the iris.
-        if not iris_data["left"] or not iris_data["right"]:
-            return None
+    def get_gaze_ratio(self, iris_data, img_w, img_h):
+        """
+        Calculates a vertical gaze ratio to detect if looking up/down.
+        Returns a value where > 0.5 is looking down, < 0.5 is looking up.
+        """
+        if not self.results or not self.results.multi_face_landmarks:
+            return 0.5
+            
+        face_lms = self.results.multi_face_landmarks[0].landmark
         
-        l_iris = np.array([[lm["x"], lm["y"]] for lm in iris_data["left"]])
-        r_iris = np.array([[lm["x"], lm["y"]] for lm in iris_data["right"]])
+        # Vertical bounds for left eye (Top: 159, Bottom: 145)
+        top_lid = face_lms[159].y
+        bottom_lid = face_lms[145].y
         
-        l_center = np.mean(l_iris, axis=0)
-        r_center = np.mean(r_iris, axis=0)
+        # Center of iris (Left: 468)
+        iris_center = face_lms[468].y
         
-        return {"left_center": l_center.tolist(), "right_center": r_center.tolist()}
+        # Calculate ratio (0.0 at top lid, 1.0 at bottom lid)
+        if (bottom_lid - top_lid) == 0: return 0.5
+        vertical_ratio = (iris_center - top_lid) / (bottom_lid - top_lid)
+        
+        return round(vertical_ratio, 3)
 
 if __name__ == "__main__":
     cap = cv2.VideoCapture(0)

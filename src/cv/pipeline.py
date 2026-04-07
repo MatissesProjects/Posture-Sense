@@ -21,16 +21,19 @@ class CVPipeline:
         # Eye tracking
         self.eye_tracker.find_face_mesh(img)
         iris_lms = self.eye_tracker.get_iris_landmarks(w, h)
-        
+        gaze_ratio = self.eye_tracker.get_gaze_ratio(iris_lms, w, h)
+
         # Posture Analysis
         analysis = self.posture_analyzer.analyze(pose_lms)
-        
+
         data = {
             "pose": pose_lms,
             "iris": iris_lms,
+            "gaze_ratio": gaze_ratio,
             "analysis": analysis,
             "resolution": {"width": w, "height": h}
         }
+
         
         return data
 
