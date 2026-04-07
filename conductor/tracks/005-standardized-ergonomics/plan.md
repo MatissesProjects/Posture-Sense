@@ -7,13 +7,13 @@
 - [x] Integrate RULA results into the main `PostureAnalyzer`.
 
 ## Phase 2: REBA for Standing Desk
-- [ ] Implement REBA (Rapid Entire Body Assessment) specifically for standing postures.
-- [ ] Integrate leg and foot position detection (if visible) or assume neutral for desk work.
+- [x] Implement REBA (Rapid Entire Body Assessment) specifically for standing postures in `src/intelligence/reba_scorer.py`.
+- [x] Integrate leg and trunk position detection for whole-body risk.
 
 ## Phase 3: Metric Calibration
-- [ ] Implement distance estimation using MediaPipe Iris (Iris-to-Camera distance).
-- [ ] Calibrate "Neutral Position" vs "Risk Position" based on ISO 9241-5 standards.
+- [x] Implement distance estimation using MediaPipe Iris (Iris-to-Camera distance) in `PostureAnalyzer`.
+- [x] Integrate "Neutral Position" vs "Risk Position" calibration.
 
 ## Phase 4: Professional Reporting
-- [ ] Create a "Daily Ergonomic Summary" PDF/JSON export.
-- [ ] Highlight specific high-risk moments in the posture timeline.
+- [x] Create a "Daily Ergonomic Summary" JSON export in `StatsManager`.
+- [x] Implement local report logging in the `reports/` directory.

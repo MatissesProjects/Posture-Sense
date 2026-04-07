@@ -10,7 +10,7 @@ class CVPipeline:
         self.eye_tracker = EyeTracker()
         self.posture_analyzer = PostureAnalyzer()
 
-    def process_frame(self, img):
+    def process_frame(self, img, static_duration=0):
         """Processes a single frame and returns all landmark data and analysis."""
         h, w, _ = img.shape
         
@@ -26,7 +26,7 @@ class CVPipeline:
         is_blinking = self.eye_tracker.get_blink_status()
         
         # Posture Analysis
-        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms)
+        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, static_duration)
         
         data = {
             "pose": pose_lms,

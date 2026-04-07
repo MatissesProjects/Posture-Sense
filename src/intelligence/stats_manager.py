@@ -22,12 +22,7 @@ class StatsManager:
             self.stats["first_seen_date"] = datetime.date.today().isoformat()
             self.save_stats()
 
-    def get_app_age_days(self):
-        first_date = datetime.date.fromisoformat(self.stats["first_seen_date"])
-        return (datetime.date.today() - first_date).days
-
-    def get_summary(self):
-
+    def load_stats(self):
         if os.path.exists(STATS_PATH):
             try:
                 with open(STATS_PATH, 'r') as f:
@@ -74,6 +69,33 @@ class StatsManager:
             self.stats["current_streak"] = 1
             
         self.stats["last_active_date"] = today_str
+
+    def get_app_age_days(self):
+        first_date = datetime.date.fromisoformat(self.stats["first_seen_date"])
+        return (datetime.date.today() - first_date).days
+
+    def generate_daily_report(self):
+        """ Generates a summary report for the current day. """
+        summary = self.get_summary()
+        today = datetime.date.today().isoformat()
+        
+        report = {
+            "date": today,
+            "overall_avg_score": summary["today_avg_score"],
+            "ergonomic_minutes": summary["today_ergonomic_minutes"],
+            "streak": summary["streak"],
+            "status": "Healthy" if summary["today_avg_score"] > 80 else "Needs Improvement",
+            "recommendation": "Maintain neutral neck position." if summary["today_avg_score"] < 80 else "Excellent work!"
+        }
+        
+        # Save report to a separate log
+        try:
+            with open(f"reports/report_{today}.json", "w") as f:
+                json.dump(report, f, indent=4)
+        except Exception as e:
+            logger.error(f"Failed to save daily report: {e}")
+            
+        return report
 
     def get_summary(self):
         today = datetime.date.today().isoformat()

@@ -90,7 +90,7 @@ class CVWorker:
             if not success: time.sleep(0.1); continue
             if self.mirror_mode: frame = cv2.flip(frame, 1)
             
-            result = self.pipeline.process_frame(frame)
+            result = self.pipeline.process_frame(frame, self.static_duration)
             result['workspace'] = self.get_layout_info()
             result['window'] = self.window_manager.get_active_window_info()
             
