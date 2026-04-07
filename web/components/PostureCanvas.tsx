@@ -116,10 +116,11 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
       let { x, y } = analysis.gaze_point;
       const isMirrored = data.workspace?.mirror_mode;
 
-      // If mirrored, the normalized X from MP is already relative to the flipped frame
-      // But we need to ensure the crosshair follows the visual face
-      const gazeX = x * w;
-      const gazeY = y * h;
+      // Map normalized gaze (relative to eye) to full canvas
+      // This is a rough projection for visualization
+      // CLAMP coordinates to keep the crosshair visible
+      const gazeX = Math.max(10, Math.min(w - 10, x * w));
+      const gazeY = Math.max(10, Math.min(h - 10, y * h));
 
       ctx.strokeStyle = '#f43f5e'; // Rose-500
       ctx.lineWidth = 2;

@@ -13,4 +13,6 @@
 ## Phase 3: Coordinate Mapping Fix
 - [x] Update `WindowManager` to use the refined offsets for monitor identification.
 - [x] Fix the "Sweet Spot" calculation to be relative to the *webcam* position rather than just the top of the stack.
-- [ ] Update Gaze mapping to account for the actual X/Y position of the screens.
+- [x] Implement initial Gaze mapping using combined head pitch and iris signals.
+- [!] **Note**: Gaze projection is functional but currently lacks precision calibration for individual focal lengths. Further refinement moved to future maintenance.
+
