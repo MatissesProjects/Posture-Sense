@@ -24,7 +24,7 @@ class CVPipeline:
         gaze_ratio = self.eye_tracker.get_gaze_ratio(iris_lms, w, h)
 
         # Posture Analysis
-        analysis = self.posture_analyzer.analyze(pose_lms)
+        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms)
 
         data = {
             "pose": pose_lms,

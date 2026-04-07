@@ -1,6 +1,8 @@
 import numpy as np
 import logging
 
+from src.intelligence.rula_scorer import RULAScorer
+
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -8,6 +10,7 @@ class PostureAnalyzer:
     def __init__(self):
         self.baseline = None  # Set during calibration
         self.is_standing = False
+        self.rula_scorer = RULAScorer()
         
         # Scoring weights
         self.weights = {
@@ -165,6 +168,9 @@ class PostureAnalyzer:
         # 7. Distance Estimation
         distance_cm = self.estimate_distance(iris_data) if iris_data else None
 
+        # 8. RULA Standard Assessment
+        rula_result = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
+
         # Weighted Total Score
         total_score = (
             shoulder_score * self.weights["shoulder_level"] +
@@ -179,6 +185,7 @@ class PostureAnalyzer:
             "is_standing": self.is_standing,
             "calibrated": self.baseline is not None,
             "distance_cm": distance_cm,
+            "rula": rula_result,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4),
                 "neck_tilt_lat": round(neck_tilt_lat, 4),
