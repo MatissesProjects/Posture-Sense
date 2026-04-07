@@ -52,36 +52,79 @@ class EyeTracker:
         
         return iris_data
 
-    def get_gaze_ratio(self, iris_data, img_w, img_h):
+    def get_head_pose(self):
         """
-        Calculates a vertical and horizontal gaze ratio.
-        Returns a normalized point where (0.5, 0.5) is centered.
+        Calculates 3D head pose (Yaw, Pitch, Roll) in degrees.
         """
         if not self.results or not self.results.multi_face_landmarks:
-            return {"x": 0.5, "y": 0.5}
+            return {"pitch": 0, "yaw": 0, "roll": 0}
             
         face_lms = self.results.multi_face_landmarks[0].landmark
         
-        # Reference points for Left Eye
-        # Vertical: Top (159), Bottom (145)
-        # Horizontal: Inner (133), Outer (33)
+        # Landmarks for pose: 
+        # Nose tip (4), Chin (152), Left eye left corner (33), Right eye right corner (263)
+        # Left mouth corner (61), Right mouth corner (291)
+        
+        # Simplified Pitch calculation (Up/Down) using relative Z-depth
+        # When nose is closer than forehead/chin, head is tilted
+        nose = face_lms[4]
+        forehead = face_lms[10]
+        chin = face_lms[152]
+        
+        # Pitch: angle of nose-forehead-chin line
+        # Yaw: difference in Z between left and right eyes
+        l_eye = face_lms[33]
+        r_eye = face_lms[263]
+        
+        pitch = (nose.y - (forehead.y + chin.y)/2) * 100
+        yaw = (l_eye.z - r_eye.z) * 100
+        roll = (l_eye.y - r_eye.y) * 100
+        
+        return {
+            "pitch": round(pitch, 2), # Negative is UP, Positive is DOWN
+            "yaw": round(yaw, 2),     # Negative is LEFT, Positive is RIGHT
+            "roll": round(roll, 2)
+        }
+
+    def get_gaze_ratio(self, iris_data, img_w, img_h):
+        """
+        Calculates a vertical and horizontal gaze ratio, 
+        combining iris position and head tilt (pitch).
+        """
+        if not self.results or not self.results.multi_face_landmarks:
+            return {"x": 0.5, "y": 0.5, "head_pitch": 0}
+            
+        face_lms = self.results.multi_face_landmarks[0].landmark
+        
+        # 1. Iris Gaze (relative to eye socket)
         l_top = face_lms[159].y
         l_bottom = face_lms[145].y
         l_inner = face_lms[133].x
         l_outer = face_lms[33].x
+        iris_center = face_lms[468]
         
-        iris_center_y = face_lms[468].y
-        iris_center_x = face_lms[468].x
+        v_iris_ratio = (iris_center.y - l_top) / (l_bottom - l_top) if (l_bottom - l_top) != 0 else 0.5
+        h_iris_ratio = (iris_center.x - l_outer) / (l_inner - l_outer) if (l_inner - l_outer) != 0 else 0.5
         
-        # Calculate Ratios
-        # Vertical: 0.0 at top lid, 1.0 at bottom lid
-        v_ratio = (iris_center_y - l_top) / (l_bottom - l_top) if (l_bottom - l_top) != 0 else 0.5
+        # 2. Head Pitch (Up/Down Tilt)
+        # Ratio of Nose Tip (4) to the line between forehead (10) and chin (152)
+        forehead = face_lms[10].y
+        chin = face_lms[152].y
+        nose = face_lms[4].y
         
-        # Horizontal: 0.0 at outer, 1.0 at inner (for left eye front view)
-        # We'll normalize this so < 0.5 is looking LEFT, > 0.5 is looking RIGHT
-        h_ratio = (iris_center_x - l_outer) / (l_inner - l_outer) if (l_inner - l_outer) != 0 else 0.5
+        # 0.0 at forehead, 1.0 at chin. Neutral is usually around 0.3-0.4
+        head_pitch_ratio = (nose - forehead) / (chin - forehead) if (chin - forehead) != 0 else 0.5
         
-        return {"x": round(h_ratio, 3), "y": round(v_ratio, 3)}
+        # 3. Combine signals for vertical projection
+        # Head pitch is a much stronger indicator for stacked monitors
+        # We'll normalize head_pitch so 0.35 is neutral, < 0.3 is UP, > 0.4 is DOWN
+        combined_y = v_iris_ratio * 0.3 + (head_pitch_ratio - 0.1) * 1.5
+        
+        return {
+            "x": round(h_iris_ratio, 3), 
+            "y": round(combined_y, 3),
+            "head_pitch": round(head_pitch_ratio, 3)
+        }
 
 if __name__ == "__main__":
     cap = cv2.VideoCapture(0)
