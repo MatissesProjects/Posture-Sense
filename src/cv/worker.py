@@ -80,8 +80,24 @@ class CVWorker:
             
             # Calculate ESS based on eye level
             if result.get('pose') and 'nose' in result['pose']:
-                eye_y = result['pose']['nose']['y'] # Use nose as proxy for eye level
+                eye_y = result['pose']['nose']['y']
                 result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
+                
+                # Distance Estimation (cm)
+                distance = self.pipeline.posture_analyzer.estimate_distance(result.get('iris'))
+                result['analysis']['distance_cm'] = distance
+                
+                # Viewing Angle (theta)
+                if distance and result['window'] and result['ess']:
+                    # Use center of active window or ESS target as point of interest
+                    target_y = result['window']['y'] + (result['window']['height'] / 2)
+                    # Convert eye normalized Y to global screen Y
+                    eye_y_pixel = eye_y * result['workspace']['total_height']
+                    
+                    angle = self.pipeline.posture_analyzer.calculate_viewing_angle(
+                        eye_y_pixel, target_y, distance
+                    )
+                    result['analysis']['viewing_angle'] = angle
             
             self.last_result = result
             

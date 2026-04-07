@@ -11,9 +11,9 @@
 - [x] Implement a function to calculate the "Ergonomic Sweet Spot" (ESS) on the stacked monitors.
 
 ## Phase 3: Viewing Angle & Distance Calculation
-- [ ] Implement logic to calculate **Viewing Angle** ($\theta$) between the user's eyes and the active text area.
-- [ ] Implement **Viewing Distance** ($D$) estimation using head/eye tracking data.
-- [ ] Ensure $\theta$ is within the ergonomic safe range ($15^\circ$ to $30^\circ$ downward).
+- [x] Implement logic to calculate **Viewing Angle** ($\theta$) between the user's eyes and the active text area.
+- [x] Implement **Viewing Distance** ($D$) estimation using head/eye tracking data.
+- [x] Ensure $\theta$ is within the ergonomic safe range ($15^\circ$ to $30^\circ$ downward).
 
 ## Phase 4: Text Placement Suggestion
 - [ ] Create a logic to suggest window movement/text adjustment if it's too high/low.

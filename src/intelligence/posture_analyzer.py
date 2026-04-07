@@ -32,6 +32,50 @@ class PostureAnalyzer:
             
         return angle
 
+    def estimate_distance(self, iris_data):
+        """
+        Estimates the distance from the camera in centimeters using iris diameter.
+        Formula: Distance = (Known Iris Diameter * Focal Length) / Iris Diameter in Pixels
+        For most webcams, we use a heuristic focal length if not calibrated.
+        """
+        if not iris_data or not iris_data["left"]:
+            return None
+        
+        # Calculate iris diameter in pixels (Left eye)
+        l_iris = iris_data["left"]
+        # Diameter is distance between landmarks 469 and 471 in MediaPipe Iris
+        p1 = np.array([l_iris[1]['x'], l_iris[1]['y']]) # 469
+        p2 = np.array([l_iris[3]['x'], l_iris[3]['y']]) # 471
+        dist_px = np.linalg.norm(p1 - p2)
+        
+        if dist_px == 0:
+            return None
+
+        # Constant: Avg human iris is ~11.7mm (1.17cm)
+        # Constant: Focal length heuristic for standard webcams ~500-700
+        focal_length = 600 
+        distance_cm = (1.17 * focal_length) / dist_px
+        return round(distance_cm, 1)
+
+    def calculate_viewing_angle(self, eye_y_pixel, target_y_pixel, distance_cm):
+        """
+        Calculates the vertical viewing angle (theta) in degrees.
+        Assumes the screen is vertical and the user is looking at target_y.
+        """
+        if distance_cm == 0:
+            return 0
+            
+        # 1 cm is roughly 38 pixels at 96 DPI, but we should use monitor height for accuracy
+        # Heuristic: 1cm ~ 35 pixels
+        y_diff_px = target_y_pixel - eye_y_pixel
+        y_diff_cm = y_diff_px / 35.0
+        
+        # tan(theta) = y_diff / distance
+        angle_rad = np.arctan2(y_diff_cm, distance_cm)
+        angle_deg = angle_rad * 180.0 / np.pi
+        
+        return round(angle_deg, 1)
+
     def calibrate(self, pose_data):
         """Sets the baseline posture for the user."""
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data:
