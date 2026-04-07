@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Posture-Sense API", lifespan=lifespan)
 
-# Enable CORS
+# Enable CORS for the React/Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
