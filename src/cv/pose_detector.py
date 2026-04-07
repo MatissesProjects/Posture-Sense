@@ -41,14 +41,35 @@ class PoseDetector:
         return landmark_list
 
     def get_relevant_landmarks(self):
-        """Returns only the landmarks relevant for posture analysis."""
-        # Relevant landmarks: Eyes (1-6), Shoulders (11, 12), Nose (0)
-        relevant_ids = [0, 1, 2, 3, 4, 5, 6, 11, 12]
+        """Returns only the landmarks relevant for posture analysis in a dictionary format."""
+        # Relevant landmarks: 
+        # Nose (0), Eyes (1-6)
+        # Shoulders (11, 12), Elbows (13, 14), Wrists (15, 16)
+        # Hips (23, 24)
+        relevant_ids = {
+            "nose": 0,
+            "left_eye": 2, # Using eye center
+            "right_eye": 5, # Using eye center
+            "left_shoulder": 11,
+            "right_shoulder": 12,
+            "left_elbow": 13,
+            "right_elbow": 14,
+            "left_wrist": 15,
+            "right_wrist": 16,
+            "left_hip": 23,
+            "right_hip": 24
+        }
+        
         all_lms = self.get_landmarks()
         if not all_lms:
-            return []
+            return {}
         
-        return [all_lms[i] for i in relevant_ids if i < len(all_lms)]
+        relevant_data = {}
+        for name, idx in relevant_ids.items():
+            if idx < len(all_lms):
+                relevant_data[name] = all_lms[idx]
+        
+        return relevant_data
 
 if __name__ == "__main__":
     # Test on webcam

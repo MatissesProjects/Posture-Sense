@@ -47,7 +47,7 @@ class TestPoseDetector(unittest.TestCase):
 
     @patch('mediapipe.solutions.pose.Pose')
     def test_get_relevant_landmarks(self, mock_pose_class):
-        """Tests that get_relevant_landmarks returns the correct subset of landmarks."""
+        """Tests that get_relevant_landmarks returns the correct subset of landmarks in dictionary format."""
         mock_pose_instance = mock_pose_class.return_value
         mock_landmarks = MagicMock()
         mock_landmark_template = MagicMock()
@@ -66,8 +66,11 @@ class TestPoseDetector(unittest.TestCase):
         detector.find_pose(img, draw=False)
         
         relevant_lms = detector.get_relevant_landmarks()
-        # Should be 9 landmarks (IDs: 0-6, 11, 12)
-        self.assertEqual(len(relevant_lms), 9)
+        # Should be 11 landmarks in a dictionary
+        self.assertIsInstance(relevant_lms, dict)
+        self.assertEqual(len(relevant_lms), 11)
+        self.assertIn("left_shoulder", relevant_lms)
+        self.assertIn("right_hip", relevant_lms)
 
 if __name__ == "__main__":
     unittest.main()
