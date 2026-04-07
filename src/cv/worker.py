@@ -3,6 +3,7 @@ import threading
 import time
 import logging
 from src.cv.pipeline import CVPipeline
+from src.system.monitor_manager import MonitorManager
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ class CVWorker:
         self.camera_id = camera_id
         self.callback = callback
         self.pipeline = CVPipeline()
+        self.monitor_manager = MonitorManager()
         self.cap = None
         self.is_running = False
         self.thread = None
@@ -69,6 +71,10 @@ class CVWorker:
             
             # Process the frame through the pipeline
             result = self.pipeline.process_frame(frame)
+            
+            # Add workspace context
+            result['workspace'] = self.monitor_manager.get_layout_info()
+            
             self.last_result = result
             
             # Optional: Add the frame itself if needed (expensive to send over WS)
