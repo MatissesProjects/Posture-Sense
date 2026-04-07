@@ -109,7 +109,8 @@ class EyeTracker:
         
         avg_ear = (l_ear + r_ear) / 2
         # Threshold for closed eye is usually < 0.2
-        return avg_ear < 0.18
+        # Cast to bool() to avoid numpy.bool_ (which is not JSON serializable)
+        return bool(avg_ear < 0.18)
 
     def get_gaze_ratio(self, iris_data, img_w, img_h):
         """

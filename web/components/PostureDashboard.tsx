@@ -2,33 +2,63 @@
 
 import React, { useState } from 'react';
 import PostureCanvas from './PostureCanvas';
-import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, User, Smile, Meh, Frown } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
   const [calibrating, setCalibrating] = useState(false);
 
-  // ... (handlers) ...
+  const handleCalibrate = async () => {
+    setCalibrating(true);
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/calibrate', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) { console.log("Calibrated"); }
+    } catch (err) {
+      console.error('Calibration failed', err);
+    } finally {
+      setTimeout(() => setCalibrating(false), 1000);
+    }
+  };
 
-  const score = data?.analysis?.score || 0;
-  const feedback = data?.analysis?.feedback || "Initializing...";
-  const placementSuggestion = data?.analysis?.placement_suggestion || "Analyzing window placement...";
-  const isStanding = data?.analysis?.is_standing || false;
-  const calibrated = data?.analysis?.calibrated || false;
-  const distance = data?.analysis?.distance_cm || 0;
-  const angle = data?.analysis?.viewing_angle || 0;
-  const lookingAt = data?.analysis?.looking_at || "center_overlap";
-  const nudge = data?.analysis?.nudge || null;
-  const blinkRate = data?.analysis?.blink_rate || 0;
-  const sessionDuration = data?.analysis?.session_duration || 0;
-  const eyeStrainWarning = data?.analysis?.eye_strain_warning || null;
-  const stats = data?.analysis?.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
+  const handleToggleMirror = async () => {
+    try {
+      await fetch('http://127.0.0.1:8000/api/toggle-mirror', { method: 'POST' });
+    } catch (err) {
+      console.error('Toggle mirror failed', err);
+    }
+  };
 
-  // ... (formatTime) ...
+  // Extract analysis data
+  const analysis = data?.analysis || {};
+  const score = analysis.score || 0;
+  const feedback = analysis.feedback || "Initializing...";
+  const placementSuggestion = analysis.placement_suggestion || "Analyzing window placement...";
+  const isStanding = analysis.is_standing || false;
+  const calibrated = analysis.calibrated || false;
+  const distance = analysis.distance_cm || 0;
+  const angle = analysis.viewing_angle || 0;
+  const nudge = analysis.nudge || null;
+  const blinkRate = analysis.blink_rate || 0;
+  const sessionDuration = analysis.session_duration || 0;
+  const eyeStrainWarning = analysis.eye_strain_warning || null;
+  const stats = analysis.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-      {/* ... (nudge alert) ... */}
+      {/* Track 006: Nudge Alert */}
+      {nudge && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
+          <AlertCircle className="w-8 h-8" />
+          {nudge}
+        </div>
+      )}
 
       <header className="max-w-7xl mx-auto flex justify-between items-center mb-10">
         <div className="flex items-center gap-3">
@@ -42,108 +72,73 @@ export default function PostureDashboard() {
             </div>
           </div>
         </div>
-        {/* ... (buttons) ... */}
+        <div className="flex gap-4">
+          <button onClick={handleToggleMirror} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all">
+            <Maximize2 className="w-4 h-4" /> Mirror
+          </button>
+          <button 
+            onClick={handleCalibrate}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg ${calibrating ? 'bg-indigo-900 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'}`}
+          >
+            <RefreshCw className={`w-4 h-4 ${calibrating ? 'animate-spin' : ''}`} />
+            {calibrating ? 'Calibrating...' : 'Calibrate'}
+          </button>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Visualizer and Avatar */}
+            {/* Visualizer */}
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative group">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Live Tracker</h3>
               <PostureCanvas onData={setData} />
-              
-              {/* Reactive Avatar */}
               <div className="absolute bottom-8 right-8 bg-slate-900/90 p-3 rounded-full border border-slate-700 shadow-2xl transition-all group-hover:scale-110">
                 <PostureAvatar score={score} />
               </div>
             </div>
 
-            {/* Monitor Layout */}
-            {/* ... */}
+            {/* Workspace Geometry */}
+            <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col">
+              <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Workspace Geometry</h3>
+              <WorkspaceVisualizer data={data} />
+            </div>
           </div>
           
-          {/* Metrics */}
-          {/* ... */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <MetricCard icon={<Activity className="text-blue-400" />} label="Mode" value={isStanding ? "Standing" : "Sitting"} />
+            <MetricCard icon={<Maximize2 className="text-emerald-400" />} label="Distance" value={`${distance} cm`} />
+            <MetricCard icon={<Monitor className="text-orange-400" />} label="View Angle" value={`${angle}°`} />
+            <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blink Rate" value={`${blinkRate} /min`} />
+            <MetricCard icon={<Settings className="text-slate-400" />} label="Session" value={formatTime(sessionDuration)} />
+            <MetricCard icon={<Settings className="text-purple-400" />} label="Status" value={calibrated ? "Calibrated" : "Raw"} />
+          </div>
 
-          {/* Stats Bar */}
+          {/* Stats Summary */}
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-indigo-600/10 border border-indigo-500/20 p-4 rounded-xl flex items-center gap-4">
-              <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400">
-                <Target className="w-6 h-6" />
-              </div>
+              <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><Target className="w-6 h-6" /></div>
               <div>
                 <div className="text-[10px] text-indigo-300/60 font-bold uppercase">Daily Goal</div>
                 <div className="text-lg font-bold text-indigo-200">{stats.today_ergonomic_minutes} / 60 <span className="text-xs font-normal">min</span></div>
               </div>
             </div>
             <div className="bg-emerald-600/10 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-4">
-              <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400">
-                <Activity className="w-6 h-6" />
-              </div>
+              <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400"><Activity className="w-6 h-6" /></div>
               <div>
                 <div className="text-[10px] text-emerald-300/60 font-bold uppercase">Today's Avg</div>
                 <div className="text-lg font-bold text-emerald-200">{stats.today_avg_score}%</div>
               </div>
             </div>
             <div className="bg-amber-600/10 border border-amber-500/20 p-4 rounded-xl flex items-center gap-4">
-              <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400">
-                <Flame className="w-6 h-6" />
-              </div>
+              <div className="bg-amber-500/20 p-2 rounded-lg text-amber-400"><Flame className="w-6 h-6" /></div>
               <div>
-                <div className="text-[10px] text-amber-300/60 font-bold uppercase">All-Time Ergonomic</div>
+                <div className="text-[10px] text-amber-300/60 font-bold uppercase">All-Time</div>
                 <div className="text-lg font-bold text-amber-200">{stats.total_ergonomic_minutes} <span className="text-xs font-normal">min</span></div>
               </div>
             </div>
           </div>
-        </div>
-        {/* ... (Right Column) ... */}
-      </main>
-    </div>
-  );
-}
 
-function PostureAvatar({ score }: { score: number }) {
-  if (score > 85) return <Smile className="w-10 h-10 text-emerald-400 animate-pulse" />;
-  if (score > 65) return <Meh className="w-10 h-10 text-amber-400" />;
-  return <Frown className="w-10 h-10 text-rose-500 animate-bounce" />;
-}
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <MetricCard 
-              icon={<Activity className="text-blue-400" />} 
-              label="Mode" 
-              value={isStanding ? "Standing" : "Sitting"} 
-            />
-            <MetricCard 
-              icon={<Maximize2 className="text-emerald-400" />} 
-              label="Distance" 
-              value={`${distance} cm`} 
-            />
-             <MetricCard 
-              icon={<Monitor className="text-orange-400" />} 
-              label="View Angle" 
-              value={`${angle}°`} 
-            />
-            <MetricCard 
-              icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} 
-              label="Blink Rate" 
-              value={`${blinkRate} /min`} 
-            />
-            <MetricCard 
-              icon={<Settings className="text-slate-400" />} 
-              label="Session" 
-              value={formatTime(sessionDuration)} 
-            />
-            <MetricCard 
-              icon={<Settings className="text-purple-400" />} 
-              label="Status" 
-              value={calibrated ? "Calibrated" : "Raw"} 
-            />
-          </div>
-
-          {/* Warnings Bar */}
           <div className="flex flex-col gap-2">
             {eyeStrainWarning && (
               <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl flex items-center gap-3">
@@ -151,66 +146,32 @@ function PostureAvatar({ score }: { score: number }) {
                 <span className="font-semibold">{eyeStrainWarning}</span>
               </div>
             )}
-            
-            <div className={`p-4 rounded-xl border flex items-center gap-4 transition-all duration-500 ${
-              placementSuggestion.includes("Perfect") 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-            }`}>
+            <div className={`p-4 rounded-xl border flex items-center gap-4 transition-all duration-500 ${placementSuggestion.includes("Perfect") ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-orange-500/10 border-orange-500/30 text-orange-400'}`}>
               {placementSuggestion.includes("Perfect") ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
               <span className="font-semibold text-lg">{placementSuggestion}</span>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Score and Analysis */}
+        {/* Right Column */}
         <div className="space-y-8">
           <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col items-center text-center">
             <h2 className="text-xl font-medium text-slate-400 mb-6">Ergonomic Score</h2>
             <div className="relative mb-6">
                <svg className="w-48 h-48 transform -rotate-90">
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="currentColor"
-                  strokeWidth="12"
-                  fill="transparent"
-                  className="text-slate-800"
-                />
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="currentColor"
-                  strokeWidth="12"
-                  fill="transparent"
-                  strokeDasharray={552.92}
-                  strokeDashoffset={552.92 - (552.92 * score) / 100}
-                  className={`transition-all duration-500 ease-out ${
-                    score > 85 ? 'text-emerald-500' : score > 65 ? 'text-yellow-500' : 'text-rose-500'
-                  }`}
-                />
+                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800" />
+                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={552.92} strokeDashoffset={552.92 - (552.92 * score) / 100} className={`transition-all duration-500 ease-out ${score > 85 ? 'text-emerald-500' : score > 65 ? 'text-yellow-500' : 'text-rose-500'}`} />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-5xl font-bold">{Math.round(score)}%</span>
-              </div>
+              <div className="absolute inset-0 flex items-center justify-center"><span className="text-5xl font-bold">{Math.round(score)}%</span></div>
             </div>
-            <p className={`text-lg font-medium px-4 py-2 rounded-full ${
-              score > 85 ? 'bg-emerald-500/10 text-emerald-400' : score > 65 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-rose-500/10 text-rose-400'
-            }`}>
+            <p className={`text-lg font-medium px-4 py-2 rounded-full ${score > 85 ? 'bg-emerald-500/10 text-emerald-400' : score > 65 ? 'bg-yellow-500/10 text-yellow-400' : 'bg-rose-500/10 text-rose-400'}`}>
               {score > 85 ? 'Excellent Alignment' : score > 65 ? 'Needs Adjustment' : 'Critical Strain'}
             </p>
           </div>
 
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-400" />
-              Posture Feedback
-            </h3>
-            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 min-h-[80px] flex items-center text-slate-300 leading-relaxed">
-              {feedback}
-            </div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Activity className="w-5 h-5 text-indigo-400" /> Posture Feedback</h3>
+            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 min-h-[80px] flex items-center text-slate-300 leading-relaxed">{feedback}</div>
           </div>
 
           <div className="bg-indigo-900/20 p-6 rounded-2xl border border-indigo-500/20">
@@ -227,87 +188,10 @@ function PostureAvatar({ score }: { score: number }) {
   );
 }
 
-function WorkspaceVisualizer({ data }: { data: any }) {
-  if (!data?.workspace || !data?.workspace.monitors) return (
-    <div className="flex-1 flex items-center justify-center text-slate-600 italic text-sm">
-      Awaiting workspace data...
-    </div>
-  );
-
-  const { workspace, window, ess } = data;
-  const { monitors, webcam, bounds } = workspace;
-  
-  // Scaling factor: Max dimension (width or height) mapped to 200px
-  const scale = 200 / Math.max(bounds.width, bounds.height);
-  const offsetX = -bounds.min_x * scale;
-  const offsetY = -bounds.min_y * scale;
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center py-4">
-      <div 
-        className="relative bg-slate-800 rounded border-2 border-slate-700 shadow-inner" 
-        style={{ 
-          width: bounds.width * scale, 
-          height: bounds.height * scale 
-        }}
-      >
-        {/* Monitors */}
-        {monitors.map((m: any) => (
-          <div 
-            key={m.id}
-            className="absolute border border-slate-500 bg-slate-700/40 flex items-center justify-center text-[8px] font-bold text-slate-400 overflow-hidden"
-            style={{ 
-              left: offsetX + m.x * scale, 
-              top: offsetY + m.y * scale, 
-              width: m.width * scale, 
-              height: m.height * scale 
-            }}
-          >
-            M{m.id}
-          </div>
-        ))}
-
-        {/* Active Window */}
-        {window && (
-          <div 
-            className="absolute bg-indigo-500/50 border border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-300 rounded-sm z-10"
-            style={{ 
-              left: offsetX + window.x * scale,
-              top: offsetY + window.y * scale, 
-              width: window.width * scale, 
-              height: window.height * scale 
-            }}
-          >
-            <div className="w-full h-full flex items-center justify-center overflow-hidden px-1">
-               <span className="text-[6px] font-medium text-white truncate">{window.title}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Webcam Indicator */}
-        {monitors[webcam.anchor_monitor_index] && (
-          <div 
-            className="absolute w-2 h-1 bg-red-500 rounded-full shadow-[0_0_5px_red] z-20 transition-all"
-            style={{ 
-              left: offsetX + (monitors[webcam.anchor_monitor_index].x + monitors[webcam.anchor_monitor_index].width * webcam.offset_x_pct) * scale - 4,
-              top: offsetY + (monitors[webcam.anchor_monitor_index].y + webcam.offset_y_px) * scale - 2
-            }}
-          />
-        )}
-
-        {/* Ergonomic Sweet Spot (ESS) Target */}
-        {ess && (
-          <div 
-            className="absolute left-0 right-0 border-t-2 border-dotted border-emerald-400/80 z-30 pointer-events-none"
-            style={{ top: offsetY + ess.target_y * scale }}
-          >
-            <div className="absolute -top-3 right-1 text-[7px] text-emerald-400 font-bold uppercase tracking-tighter bg-slate-900 px-1 rounded-sm">Target</div>
-          </div>
-        )}
-      </div>
-      <p className="mt-4 text-[10px] text-slate-500 font-medium uppercase tracking-widest tracking-widest">Workspace Geometry Model</p>
-    </div>
-  );
+function PostureAvatar({ score }: { score: number }) {
+  if (score > 85) return <Smile className="w-10 h-10 text-emerald-400 animate-pulse" />;
+  if (score > 65) return <Meh className="w-10 h-10 text-amber-400" />;
+  return <Frown className="w-10 h-10 text-rose-500 animate-bounce" />;
 }
 
 function MetricCard({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
@@ -316,6 +200,50 @@ function MetricCard({ icon, label, value }: { icon: React.ReactNode, label: stri
       <div className="p-2 bg-slate-950 rounded-lg">{icon}</div>
       <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{label}</span>
       <span className="text-base font-bold text-slate-200">{value}</span>
+    </div>
+  );
+}
+
+function WorkspaceVisualizer({ data }: { data: any }) {
+  if (!data?.workspace || !data?.workspace.monitors) return (
+    <div className="flex-1 flex items-center justify-center text-slate-600 italic text-sm">Awaiting workspace data...</div>
+  );
+
+  const { workspace, window, ess } = data;
+  const { monitors, bounds, webcam, mirror_mode } = workspace;
+  
+  const scale = 200 / Math.max(bounds.width, bounds.height);
+  const offsetX = -bounds.min_x * scale;
+  const offsetY = -bounds.min_y * scale;
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center py-4">
+      <div className="relative bg-slate-800 rounded border-2 border-slate-700 shadow-inner" style={{ width: bounds.width * scale, height: bounds.height * scale }}>
+        {monitors.map((m: any) => (
+          <div key={m.id} className="absolute border border-slate-500 bg-slate-700/40 flex items-center justify-center text-[8px] font-bold text-slate-400 overflow-hidden"
+            style={{ left: offsetX + m.x * scale, top: offsetY + m.y * scale, width: m.width * scale, height: m.height * scale }}>
+            M{m.id}
+          </div>
+        ))}
+        {window && (
+          <div className="absolute bg-indigo-500/50 border border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-300 rounded-sm z-10"
+            style={{ left: offsetX + window.x * scale, top: offsetY + window.y * scale, width: window.width * scale, height: window.height * scale }}>
+            <div className="w-full h-full flex items-center justify-center overflow-hidden px-1"><span className="text-[6px] font-medium text-white truncate">{window.title}</span></div>
+          </div>
+        )}
+        {monitors[webcam?.anchor_monitor_index] && (
+          <div className="absolute w-2 h-1 bg-red-500 rounded-full shadow-[0_0_5px_red] z-20"
+            style={{ left: offsetX + (monitors[webcam.anchor_monitor_index].x + monitors[webcam.anchor_monitor_index].width * webcam.offset_x_pct) * scale - 4,
+                     top: offsetY + (monitors[webcam.anchor_monitor_index].y + webcam.offset_y_px) * scale - 2 }} />
+        )}
+        {ess && (
+          <div className="absolute left-0 right-0 border-t-2 border-dotted border-emerald-400/80 z-30 pointer-events-none"
+            style={{ top: offsetY + ess.target_y * scale }}>
+            <div className="absolute -top-3 right-1 text-[7px] text-emerald-400 font-bold uppercase tracking-tighter bg-slate-900 px-1 rounded-sm">Target</div>
+          </div>
+        )}
+      </div>
+      <p className="mt-4 text-[10px] text-slate-500 font-medium uppercase tracking-widest">Workspace Model</p>
     </div>
   );
 }
