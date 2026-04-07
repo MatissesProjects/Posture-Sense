@@ -14,6 +14,7 @@ The project is divided into four main tracks to ensure focused development and r
 | **006** | [**Behavioral Gamification**](./tracks/006-behavioral-gamification/index.md) | Micro-interventions, 20-20-20 rule for eye strain, and habit-forming gamification. | *Not Started* | [Plan](./tracks/006-behavioral-gamification/plan.md) |
 | **007** | [**Predictive Analytics**](./tracks/007-predictive-analytics/index.md) | Longitudinal posture data storage, fatigue prediction modeling, and gaze heatmaps. | *Not Started* | [Plan](./tracks/007-predictive-analytics/plan.md) |
 | **008** | [**Privacy & Security**](./tracks/008-privacy-security/index.md) | Formalized on-device processing, data encryption, and user privacy dashboards. | *Not Started* | [Plan](./tracks/008-privacy-security/plan.md) |
+| **009** | [**Smart Stretch Interventions**](./tracks/009-stretch-interventions/index.md) | Posture-aware stretch suggestions, guided micro-breaks, and recovery tracking. | *Not Started* | [Plan](./tracks/009-stretch-interventions/plan.md) |
 
 ## Track Conventions
 - Use descriptive commit messages: `track-xxx: message`.
