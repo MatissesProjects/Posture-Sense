@@ -200,22 +200,22 @@ class PostureAnalyzer:
 
     def _generate_feedback(self, total_score, slouch, neck, shoulder):
         if total_score >= 90:
-            return "Excellent Posture! Keep it up."
+            return "✅ Excellent alignment. Keep this position."
         
         feedback_items = []
         if slouch < 70:
-            feedback_items.append("Sit up straighter, you're slouching.")
+            feedback_items.append("🪑 Slouching: Sit up straighter or raise your monitor.")
         if neck < 70:
-            feedback_items.append("Align your head with your spine.")
+            feedback_items.append("🦒 Neck Tilt: Align your head. Check if your side monitors are too far.")
         if shoulder < 70:
-            feedback_items.append("Level your shoulders.")
+            feedback_items.append("⚖️ Unlevel Shoulders: Level your arms. Adjust your armrests.")
             
         if not feedback_items:
             if total_score < 80:
-                return "Minor postural adjustments needed."
-            return "Good posture."
+                return "⚠️ Minor adjustments: Check your eye level relative to the screen."
+            return "👍 Good posture."
             
-        return " ".join(feedback_items)
+        return " | ".join(feedback_items)
 
 if __name__ == "__main__":
     analyzer = PostureAnalyzer()

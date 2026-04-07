@@ -91,10 +91,7 @@ export default function PostureCanvas({ onData }: { onData?: (data: PostureData)
         const mW = m.width * projScale;
         const mH = m.height * projScale;
 
-        // Flip X if mirrored
-        if (mirror_mode) {
-          relX = -relX - mW;
-        }
+        // REMOVED manual flip logic - detecting on mirrored frame already handles alignment
 
         const drawX = (camViewCenter.x + relX) * w;
         const drawY = (camViewCenter.y + relY) * h;

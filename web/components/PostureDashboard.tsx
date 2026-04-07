@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
 import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
   const [calibrating, setCalibrating] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const lastNudgeRef = useRef<string | null>(null);
 
   const handleCalibrate = async () => {
     setCalibrating(true);
@@ -44,15 +46,50 @@ export default function PostureDashboard() {
   const eyeStrainWarning = analysis.eye_strain_warning || null;
   const stats = analysis.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
 
+  // Sound and Title Alerts
+  useEffect(() => {
+    if (nudge && nudge !== lastNudgeRef.current) {
+      if (soundEnabled) {
+        try {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + 0.2);
+        } catch (e) {}
+      }
+      lastNudgeRef.current = nudge;
+    } else if (!nudge) {
+      lastNudgeRef.current = null;
+    }
+
+    if (nudge) {
+      const originalTitle = "Posture-Sense";
+      let isAlert = false;
+      const interval = setInterval(() => {
+        document.title = isAlert ? "⚠️ ALERT!" : originalTitle;
+        isAlert = !isAlert;
+      }, 1000);
+      return () => {
+        clearInterval(interval);
+        document.title = originalTitle;
+      };
+    }
+  }, [nudge, soundEnabled]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-      {/* Track 006: Nudge Alert */}
       {nudge && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
           <AlertCircle className="w-8 h-8" />
@@ -89,7 +126,6 @@ export default function PostureDashboard() {
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Visualizer */}
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative group">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Live Tracker</h3>
               <PostureCanvas onData={setData} />
@@ -98,7 +134,6 @@ export default function PostureDashboard() {
               </div>
             </div>
 
-            {/* Workspace Geometry */}
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Workspace Geometry</h3>
               <WorkspaceVisualizer data={data} />
@@ -109,12 +144,11 @@ export default function PostureDashboard() {
             <MetricCard icon={<Activity className="text-blue-400" />} label="Mode" value={isStanding ? "Standing" : "Sitting"} />
             <MetricCard icon={<Maximize2 className="text-emerald-400" />} label="Distance" value={`${distance} cm`} />
             <MetricCard icon={<Monitor className="text-orange-400" />} label="View Angle" value={`${angle}°`} />
-            <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blink Rate" value={`${blinkRate} /min`} />
+            <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blink Rate" value={`${blinkRate}/m`} />
             <MetricCard icon={<Settings className="text-slate-400" />} label="Session" value={formatTime(sessionDuration)} />
             <MetricCard icon={<Settings className="text-purple-400" />} label="Status" value={calibrated ? "Calibrated" : "Raw"} />
           </div>
 
-          {/* Stats Summary */}
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-indigo-600/10 border border-indigo-500/20 p-4 rounded-xl flex items-center gap-4">
               <div className="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><Target className="w-6 h-6" /></div>
@@ -153,7 +187,6 @@ export default function PostureDashboard() {
           </div>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-8">
           <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col items-center text-center">
             <h2 className="text-xl font-medium text-slate-400 mb-6">Ergonomic Score</h2>
@@ -210,7 +243,7 @@ function WorkspaceVisualizer({ data }: { data: any }) {
   );
 
   const { workspace, window, ess } = data;
-  const { monitors, bounds, webcam, mirror_mode } = workspace;
+  const { monitors, bounds, webcam } = workspace;
   
   const scale = 200 / Math.max(bounds.width, bounds.height);
   const offsetX = -bounds.min_x * scale;
