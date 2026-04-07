@@ -79,5 +79,31 @@ class TestPostureAnalyzer(unittest.TestCase):
         """Tests handling of empty or insufficient pose data."""
         self.assertEqual(self.analyzer.analyze({})["score"], 0)
 
+    def test_distance_estimation(self):
+        """Tests distance estimation from iris landmarks."""
+        # 11.7mm iris at 600 focal length.
+        # If iris diameter is 11.7 pixels, distance should be 60cm.
+        # MediaPipe iris ids: 469 (x=100), 471 (x=111.7)
+        mock_iris = {
+            "left": [
+                {}, # 468
+                {"x": 100, "y": 100}, # 469
+                {}, # 470
+                {"x": 111.7, "y": 100}, # 471
+                {} # 472
+            ]
+        }
+        dist = self.analyzer.estimate_distance(mock_iris)
+        self.assertAlmostEqual(dist, 60.0, delta=1.0)
+
+    def test_viewing_angle(self):
+        """Tests viewing angle calculation."""
+        # Eye at 500px, target at 700px, distance 40cm.
+        # y_diff = 200px. y_diff_cm = 200 / 35 = 5.71cm.
+        # tan(theta) = 5.71 / 40 = 0.142. theta = 8.1 degrees.
+        angle = self.analyzer.calculate_viewing_angle(500, 700, 40)
+        self.assertAlmostEqual(angle, 8.1, delta=0.5)
+
+
 if __name__ == "__main__":
     unittest.main()
