@@ -16,6 +16,11 @@ The project is divided into four main tracks to ensure focused development and r
 | **008** | [**Privacy & Security**](./tracks/008-privacy-security/index.md) | Formalized on-device processing, data encryption, and user privacy dashboards. | *Not Started* | [Plan](./tracks/008-privacy-security/plan.md) |
 | **009** | [**Smart Stretch Interventions**](./tracks/009-stretch-interventions/index.md) | Posture-aware stretch suggestions, guided micro-breaks, and recovery tracking. | *Not Started* | [Plan](./tracks/009-stretch-interventions/plan.md) |
 | **010** | [**Workspace Refinement**](./tracks/010-workspace-refinement/index.md) | Support for asymmetrical monitor layouts, webcam anchoring, and UI geometry editor. | *Completed* | [Plan](./tracks/010-workspace-refinement/plan.md) |
+| **011** | [**Hand & Wrist Ergonomics**](./tracks/011-hand-wrist-ergonomics/index.md) | Monitoring typing strain, wrist deviation, and RSI risk factors. | *Not Started* | [Plan](./tracks/011-hand-wrist-ergonomics/plan.md) |
+| **012** | [**Biomechanical Modeling**](./tracks/012-biomechanical-modeling/index.md) | 3D physical modeling, Center of Mass (CoM), and kinematic spine chain analysis. | *Not Started* | [Plan](./tracks/012-biomechanical-modeling/plan.md) |
+| **013** | [**Predictive Fatigue**](./tracks/013-predictive-fatigue/index.md) | Machine learning models to forecast and prevent postural and eye fatigue. | *Not Started* | [Plan](./tracks/013-predictive-fatigue/plan.md) |
+| **014** | [**Corporate Reporting**](./tracks/014-corporate-reporting/index.md) | High-fidelity analytics, strain heatmaps, and professional PDF reports. | *Not Started* | [Plan](./tracks/014-corporate-reporting/plan.md) |
+| **015** | [**Adaptive Calibration**](./tracks/015-adaptive-calibration/index.md) | Robustness to environment, lighting, and camera orientation changes. | *Not Started* | [Plan](./tracks/015-adaptive-calibration/plan.md) |
 
 
 ## Track Conventions
