@@ -4,6 +4,7 @@ import datetime
 import logging
 
 from src.intelligence.database_manager import DatabaseManager
+from src.intelligence.fatigue_predictor import FatiguePredictor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,6 +14,8 @@ STATS_PATH = "user_stats.json"
 class StatsManager:
     def __init__(self):
         self.db_manager = DatabaseManager()
+        self.fatigue_predictor = FatiguePredictor()
+        self.last_train_time = 0
         self.stats = {
             "daily_history": {}, 
             "current_streak": 0,
@@ -104,15 +107,27 @@ class StatsManager:
             
         return report
 
-    def get_summary(self):
+    def get_summary(self, current_score=None):
         today = datetime.date.today().isoformat()
         day_data = self.stats["daily_history"].get(today, {"total_score": 0, "entries": 0, "ergonomic_minutes": 0})
         
         avg_score = day_data["total_score"] / day_data["entries"] if day_data["entries"] > 0 else 0
         
+        # Periodic Model Training (every 60 minutes)
+        import time
+        now = time.time()
+        if now - self.last_train_time > 3600:
+            if self.fatigue_predictor.train():
+                self.last_train_time = now
+
+        fatigue_prediction = None
+        if current_score is not None:
+            fatigue_prediction = self.fatigue_predictor.predict_slump(current_score)
+
         return {
             "streak": self.stats["current_streak"],
             "today_avg_score": round(avg_score, 1),
             "today_ergonomic_minutes": day_data["ergonomic_minutes"],
-            "total_ergonomic_minutes": self.stats["total_ergonomic_minutes"]
+            "total_ergonomic_minutes": self.stats["total_ergonomic_minutes"],
+            "fatigue_prediction": fatigue_prediction
         }

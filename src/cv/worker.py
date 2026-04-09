@@ -167,8 +167,14 @@ class CVWorker:
                     self.stats_manager.record_minute(result['analysis'])
                     self.last_stats_record_time = now
 
-                result['analysis']['stats'] = self.stats_manager.get_summary()
+                result['analysis']['stats'] = self.stats_manager.get_summary(score)
 
+                # 4. Pre-Fatigue Alert (Track 007)
+                prediction = result['analysis']['stats'].get('fatigue_prediction')
+                if prediction and prediction.get('imminent') and prediction.get('minutes_until', 99) <= 5:
+                    msg = f"📉 PREDICTIVE ALERT: Your posture is likely to degrade in {prediction['minutes_until']}m. Take a quick stretch!"
+                    result['analysis']['nudge'] = msg
+                    self.notification_manager.notify("Fatigue Warning", msg, "fatigue")
                 # Window
                 ess_y = result['ess']['target_y']
                 target_y = result['window']['y'] + (result['window']['height'] / 2) if result['window'] else 0

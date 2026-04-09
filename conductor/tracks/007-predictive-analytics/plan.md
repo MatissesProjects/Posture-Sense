@@ -6,9 +6,9 @@
 - [x] Implement minute-by-minute data aggregation.
 
 ## Phase 2: Predictive Models
-- [ ] Implement a **Random Forest** or **RNN** model to analyze daily fatigue patterns.
-- [ ] Predict when the user is likely to slouch (e.g., "You typically slouch after 2 PM").
-- [ ] Provide "Pre-Fatigue Alerts" to suggest breaks *before* posture degrades.
+- [x] Implement a Linear Regression model in `src/intelligence/fatigue_predictor.py` to analyze daily trends.
+- [x] Predict imminent posture slumps based on time-of-day.
+- [x] Provide "Pre-Fatigue Alerts" (Track 007) to suggest breaks *before* posture degrades.
 
 ## Phase 3: Advanced Visualizations
 - [ ] Create a "Neck Strain Heatmap" based on gaze and tilt data.

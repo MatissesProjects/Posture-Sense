@@ -10,3 +10,6 @@ pytest
 python-dotenv
 watchfiles
 httptools
+pandas
+scikit-learn
+win10toast
