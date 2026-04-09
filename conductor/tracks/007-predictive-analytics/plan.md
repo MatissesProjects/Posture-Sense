@@ -1,9 +1,9 @@
 # Implementation Plan: Track 007 - Predictive Analytics
 
 ## Phase 1: Longitudinal Data Storage
-- [ ] Create a local SQLite database for posture metrics.
-- [ ] Store joint angles, risk scores, and durations.
-- [ ] Implement data aggregation logic (minutely/hourly averages).
+- [x] Create a local SQLite database (`posture_data.db`) in `src/intelligence/database_manager.py`.
+- [x] Store joint angles, risk scores, and durations via `StatsManager`.
+- [x] Implement minute-by-minute data aggregation.
 
 ## Phase 2: Predictive Models
 - [ ] Implement a **Random Forest** or **RNN** model to analyze daily fatigue patterns.

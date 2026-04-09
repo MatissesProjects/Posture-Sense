@@ -3,6 +3,8 @@ import os
 import datetime
 import logging
 
+from src.intelligence.database_manager import DatabaseManager
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -10,6 +12,7 @@ STATS_PATH = "user_stats.json"
 
 class StatsManager:
     def __init__(self):
+        self.db_manager = DatabaseManager()
         self.stats = {
             "daily_history": {}, 
             "current_streak": 0,
@@ -37,9 +40,13 @@ class StatsManager:
         except Exception as e:
             logger.error(f"Failed to save stats: {e}")
 
-    def record_minute(self, score):
+    def record_minute(self, analysis_data):
         """ Records performance for a single minute. """
         today = datetime.date.today().isoformat()
+        score = analysis_data.get("score", 0)
+        
+        # Log to Database
+        self.db_manager.log_metrics(analysis_data)
         
         if today not in self.stats["daily_history"]:
             self.stats["daily_history"][today] = {"total_score": 0, "entries": 0, "ergonomic_minutes": 0}

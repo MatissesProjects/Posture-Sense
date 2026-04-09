@@ -162,10 +162,11 @@ class CVWorker:
                     result['analysis']['stretch_type'] = "vision_recovery"
                     self.notification_manager.notify("Break Time", msg, "break")
 
-                # Stats
+                # --- Stats & Summary ---
                 if now - self.last_stats_record_time > 60:
-                    self.stats_manager.record_minute(score)
+                    self.stats_manager.record_minute(result['analysis'])
                     self.last_stats_record_time = now
+
                 result['analysis']['stats'] = self.stats_manager.get_summary()
 
                 # Window
