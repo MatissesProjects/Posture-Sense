@@ -91,6 +91,28 @@ async def toggle_mirror():
         return {"mirror_mode": mirror_mode}
     return {"error": "Worker not initialized"}
 
+@app.get("/api/history")
+async def get_history(limit: int = 100):
+    if cv_worker:
+        logs = cv_worker.stats_manager.db_manager.get_recent_history(limit)
+        # Convert sqlite rows to list of dicts
+        history = []
+        for log in logs:
+            history.append({
+                "id": log[0],
+                "timestamp": log[1],
+                "score": log[2],
+                "is_standing": bool(log[3]),
+                "distance_cm": log[4],
+                "viewing_angle": log[5],
+                "blink_rate": log[6],
+                "slouch_duration": log[7],
+                "rula_score": log[8],
+                "reba_score": log[9]
+            })
+        return history
+    return []
+
 @app.websocket("/ws/posture")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)

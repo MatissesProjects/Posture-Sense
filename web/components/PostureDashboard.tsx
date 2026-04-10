@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
-import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, User, Smile, Meh, Frown, Volume2, VolumeX, Timer, Eye } from 'lucide-react';
+import PostureTrends from './PostureTrends';
+import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Eye } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
@@ -270,6 +271,9 @@ export default function PostureDashboard() {
               <span className="font-medium">Perform 5 Chin Tucks</span>
             </div>
           </div>
+
+          {/* Track 007: Historical Trends */}
+          <PostureTrends />
         </div>
       </main>
     </div>

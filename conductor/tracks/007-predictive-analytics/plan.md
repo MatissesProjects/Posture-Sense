@@ -11,6 +11,7 @@
 - [x] Provide "Pre-Fatigue Alerts" (Track 007) to suggest breaks *before* posture degrades.
 
 ## Phase 3: Advanced Visualizations
-- [ ] Create a "Neck Strain Heatmap" based on gaze and tilt data.
-- [ ] Generate a weekly "Gaze Distribution Map" (where you look on your stacked monitors).
-- [ ] Visualize "Neutral Time" vs "Risk Time" in a professional dashboard.
+- [x] Create a historical data endpoint in the FastAPI backend.
+- [x] Implement real-time trend charts using `recharts` in `PostureTrends.tsx`.
+- [x] Visualize "Neutral Time" vs "Risk Time" via a distribution pie chart.
+- [ ] Create a "Neck Strain Heatmap" based on gaze and tilt data (Future Expansion).
