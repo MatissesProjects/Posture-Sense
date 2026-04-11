@@ -89,6 +89,25 @@ class PostureAnalyzer:
         total_com = (head_com * weights["head"] + trunk_com * weights["trunk"] + arm_com * weights["arms"])
         return {"x": round(float(total_com[0]), 2), "y": round(float(total_com[1]), 2), "z": round(float(total_com[2]), 2)}
 
+    def analyze_spine_kinematics(self, physical_pose):
+        if not physical_pose or "left_hip" not in physical_pose: return None
+        nose = np.array([physical_pose["nose"]["x"], physical_pose["nose"]["y"], physical_pose["nose"]["z"]])
+        l_s, r_s = physical_pose["left_shoulder"], physical_pose["right_shoulder"]
+        mid_s = np.array([(l_s["x"] + r_s["x"])/2, (l_s["y"] + r_s["y"])/2, (l_s["z"] + r_s["z"])/2])
+        l_h, r_h = physical_pose["left_hip"], physical_pose["right_hip"]
+        mid_h = np.array([(l_h["x"] + r_h["x"])/2, (l_h["y"] + r_h["y"])/2, (l_h["z"] + r_h["z"])/2])
+        cervical_vec = nose - mid_s
+        torso_vec = mid_s - mid_h
+        vertical = np.array([0, -1, 0])
+        def angle_with_vertical(vec):
+            v_unit = vec / (np.linalg.norm(vec) + 1e-6)
+            dot = np.dot(v_unit, vertical)
+            return np.arccos(np.clip(dot, -1.0, 1.0)) * 180.0 / np.pi
+        neck_flexion = angle_with_vertical(cervical_vec)
+        trunk_flexion = angle_with_vertical(torso_vec)
+        slump_depth = mid_s[2] - mid_h[2]
+        return {"neck_flexion": round(float(neck_flexion), 1), "trunk_flexion": round(float(trunk_flexion), 1), "slump_depth_cm": round(float(slump_depth), 2), "is_slumping": slump_depth > 5.0}
+
     def calibrate(self, pose_data):
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data: return False
         nose, l_s, r_s = pose_data["nose"], pose_data["left_shoulder"], pose_data["right_shoulder"]
@@ -107,6 +126,7 @@ class PostureAnalyzer:
         distance_cm = self.estimate_distance(iris_data) if iris_data else None
         physical_pose = self.normalize_to_physical(pose_data, distance_cm)
         com = self.calculate_com(physical_pose) if physical_pose else None
+        spine = self.analyze_spine_kinematics(physical_pose) if physical_pose else None
 
         l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
         shoulder_diff = abs(l_s['y'] - r_s['y'])
@@ -145,28 +165,29 @@ class PostureAnalyzer:
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": self.baseline is not None,
-            "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "typing_score": typing_score,
+            "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "spine": spine, "typing_score": typing_score,
             "rula": rula, "reba": reba,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100):
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None):
         if total_score >= 90: return "✅ Excellent alignment."
         items = []
         if slouch < 70: items.append("🪑 Slouching detected.")
         if neck < 70: items.append("🦒 Check neck tilt.")
         if shoulder < 70: items.append("⚖️ Level shoulders.")
         if typing < 75: items.append("⌨️ Typing strain.")
+        if spine and spine.get("is_slumping"): items.append("📉 Torso leaning forward.")
         return " | ".join(items) if items else "👍 Good posture."
 
 if __name__ == "__main__":
     analyzer = PostureAnalyzer()
-    mock_pose = {"nose": {"x": 0.5, "y": 0.3}, "left_shoulder": {"x": 0.4, "y": 0.4}, "right_shoulder": {"x": 0.6, "y": 0.4},
-                 "left_elbow": {"x": 0.35, "y": 0.55}, "left_wrist": {"x": 0.4, "y": 0.6}, "left_hip": {"x": 0.42, "y": 0.7}, "right_hip": {"x": 0.58, "y": 0.7}}
+    mock_pose = {"nose": {"x": 0.5, "y": 0.3, "z": 0}, "left_shoulder": {"x": 0.4, "y": 0.4, "z": 0}, "right_shoulder": {"x": 0.6, "y": 0.4, "z": 0},
+                 "left_elbow": {"x": 0.35, "y": 0.55, "z": 0}, "left_wrist": {"x": 0.4, "y": 0.6, "z": 0}, "left_hip": {"x": 0.42, "y": 0.7, "z": 0}, "right_hip": {"x": 0.58, "y": 0.7, "z": 0}}
     analyzer.calibrate(mock_pose)
     print(analyzer.analyze(mock_pose))

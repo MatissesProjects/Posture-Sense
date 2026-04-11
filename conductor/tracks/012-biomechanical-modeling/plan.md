@@ -10,9 +10,9 @@
 - [ ] Visualize the CoM vector on the live dashboard.
 
 ## Phase 3: Kinematic Chain Analysis
-- [ ] Model the spine as three distinct segments: Lumbar, Thoracic, and Cervical.
-- [ ] Calculate the relative rotation (shear) between these segments.
-- [ ] Detect "Slump Projection" (where the torso collapses forward even if the head is level).
+- [x] Model the spine as three distinct segments: Lumbar, Thoracic, and Cervical in `PostureAnalyzer.analyze_spine_kinematics`.
+- [x] Calculate the relative rotation (flexion) between these segments.
+- [x] Detect "Slump Projection" (where the torso collapses forward even if the head is level).
 
 ## Phase 4: Biomechanical Risk Score
 - [ ] Replace simple weighted scoring with a model-based "Structural Load" score.
