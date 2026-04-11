@@ -1,8 +1,8 @@
 # Implementation Plan: Track 012 - Biomechanical Modeling
 
 ## Phase 1: 3D Normalization
-- [ ] Implement robust Z-axis (depth) normalization for pose landmarks.
-- [ ] Create a "Physical Workspace" coordinate system (mapping pixels to estimated cm).
+- [x] Implement robust Z-axis (depth) normalization for pose landmarks in `PostureAnalyzer.normalize_to_physical`.
+- [x] Create a "Physical Workspace" coordinate system (mapping pixels to estimated cm).
 
 ## Phase 2: Center of Mass (CoM)
 - [ ] Implement CoM estimation using weighted body segment averages.
