@@ -1,9 +1,9 @@
 # Implementation Plan: Track 013 - Predictive Fatigue Modeling
 
 ## Phase 1: Feature Engineering
-- [ ] Implement aggregation of metrics over 5, 15, and 60-minute windows.
-- [ ] Track "Micro-slump" frequency (brief posture failures).
-- [ ] Correlate posture with time-of-day and session duration.
+- [x] Implement aggregation of metrics over 5, 15, and 60-minute windows.
+- [x] Track "Micro-slump" frequency (brief posture failures).
+- [x] Correlate posture with time-of-day and session duration.
 
 ## Phase 2: Predictive Model Integration
 - [ ] Implement a simple RNN or Linear Regression model to predict "Time to Slump."

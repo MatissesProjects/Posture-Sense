@@ -124,9 +124,18 @@ class StatsManager:
         if current_score is not None:
             fatigue_prediction = self.fatigue_predictor.predict_slump(current_score)
 
+        # Calculate short-term moving averages from database
+        recent_logs = self.db_manager.get_recent_history(limit=60)
+        avg_5m = sum(l[2] for l in recent_logs[:5]) / min(5, len(recent_logs)) if len(recent_logs) > 0 else avg_score
+        avg_15m = sum(l[2] for l in recent_logs[:15]) / min(15, len(recent_logs)) if len(recent_logs) > 0 else avg_score
+        avg_60m = sum(l[2] for l in recent_logs[:60]) / min(60, len(recent_logs)) if len(recent_logs) > 0 else avg_score
+
         return {
             "streak": self.stats["current_streak"],
             "today_avg_score": round(avg_score, 1),
+            "avg_5m": round(avg_5m, 1),
+            "avg_15m": round(avg_15m, 1),
+            "avg_60m": round(avg_60m, 1),
             "today_ergonomic_minutes": day_data["ergonomic_minutes"],
             "total_ergonomic_minutes": self.stats["total_ergonomic_minutes"],
             "fatigue_prediction": fatigue_prediction

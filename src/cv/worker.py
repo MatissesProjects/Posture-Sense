@@ -32,6 +32,7 @@ class CVWorker:
         # Behavioral Tracking
         self.slouch_start_time = None
         self.slouch_duration = 0
+        self.micro_slumps = 0
         
         # Eye Fatigue Tracking
         self.session_start_time = time.time()
@@ -168,15 +169,21 @@ class CVWorker:
                 score = result['analysis'].get('score', 100)
                 app_age = self.stats_manager.get_app_age_days()
                 current_threshold = min(75, 50 + (app_age * 2))
-                
+
                 if score < current_threshold:
                     if self.slouch_start_time is None: self.slouch_start_time = now
                     self.slouch_duration = now - self.slouch_start_time
                 else:
+                    if self.slouch_start_time is not None:
+                        # Record a micro-slump if duration was between 1 and 10 seconds
+                        if 1 < self.slouch_duration < 10:
+                            self.micro_slumps += 1
                     self.slouch_start_time = None
                     self.slouch_duration = 0
-                
-                # Alerts
+
+                result['analysis']['slouch_duration'] = round(self.slouch_duration, 1)
+                result['analysis']['micro_slumps'] = self.micro_slumps
+
                 if self.slouch_duration > 10:
                     self.notification_manager.notify("Posture-Sense", "Posture Check: Take a deep breath.", "slouch")
                     result['analysis']['nudge'] = "⚠️ Posture Check: Take a deep breath and realign."
