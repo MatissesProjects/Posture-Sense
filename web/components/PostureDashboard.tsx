@@ -138,6 +138,10 @@ export default function PostureDashboard() {
                 ? "Look at something 20 feet away to rest your eyes." 
                 : activeStretch === "thoracic_extension"
                 ? "Perform a thoracic extension: stretch your mid-back over your chair."
+                : activeStretch === "vertical_gaze_neutralizer"
+                ? "Neck Reset: Look down and gently tuck your chin to neutralize vertical strain."
+                : activeStretch === "standing_backbend"
+                ? "Standing Backbend: Place hands on hips and lean back slightly to reset your spine."
                 : "Take a deep breath and realign your spine."}
             </div>
             <div className="text-8xl font-black text-white tabular-nums">

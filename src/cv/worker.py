@@ -46,6 +46,13 @@ class CVWorker:
         self.static_duration = 0
         self.MOVEMENT_THRESHOLD = 0.015
 
+        # --- Track 009: Specialized Stretches ---
+        self.top_monitor_time = 0
+        self.standing_time = 0
+        self.active_stretch_type = None
+        self.stretch_start_time = None
+        self.stretch_move_detected = False
+
         # Stats Interval
         self.last_stats_record_time = time.time()
 
@@ -68,7 +75,6 @@ class CVWorker:
         return self.mirror_mode
 
     def toggle_privacy(self):
-        """ Toggles privacy mode (kills camera feed). """
         self.privacy_mode = not self.privacy_mode
         return self.privacy_mode
 
@@ -93,19 +99,12 @@ class CVWorker:
     def _run(self):
         while self.is_running:
             if self.privacy_mode:
-                # In Privacy Mode, we don't even read the camera
                 result = {
-                    "analysis": {
-                        "status": "Privacy Mode Active",
-                        "score": 100,
-                        "feedback": "Camera Disabled for Privacy."
-                    },
-                    "workspace": self.get_layout_info(),
-                    "pose": {}, "iris": {}
+                    "analysis": { "status": "Privacy Mode Active", "score": 100 },
+                    "workspace": self.get_layout_info(), "pose": {}, "iris": {}
                 }
                 if self.callback: self.callback(result, None)
-                time.sleep(0.5)
-                continue
+                time.sleep(0.5); continue
 
             success, frame = self.cap.read()
             if not success: time.sleep(0.1); continue
@@ -121,17 +120,49 @@ class CVWorker:
                 eye_y = pose['nose']['y']
                 result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
                 
-                # --- Movement ---
+                # --- Movement & Compliance ---
+                move_dist = 0
                 if self.last_pose_landmarks:
-                    move_dist = 0
                     for key in ['nose', 'left_shoulder', 'right_shoulder']:
                         move_dist += np.sqrt((pose[key]['x'] - self.last_pose_landmarks[key]['x'])**2 + 
                                            (pose[key]['y'] - self.last_pose_landmarks[key]['y'])**2)
-                    if move_dist > self.MOVEMENT_THRESHOLD: self.last_movement_time = now
+                    if move_dist > self.MOVEMENT_THRESHOLD: 
+                        self.last_movement_time = now
+                        if self.active_stretch_type: self.stretch_move_detected = True
                 
                 self.last_pose_landmarks = pose.copy()
                 self.static_duration = now - self.last_movement_time
                 result['analysis']['static_duration'] = round(self.static_duration, 1)
+
+                # --- Specialized Track 009 Logic ---
+                looking_at = result['analysis'].get('looking_at', "")
+                if "top" in looking_at: self.top_monitor_time += 1
+                else: self.top_monitor_time = 0
+
+                is_standing = result['analysis'].get('is_standing', False)
+                if is_standing: self.standing_time += 1
+                else: self.standing_time = 0
+
+                # Trigger Stretches
+                if self.top_monitor_time > 600: # 10 mins looking up
+                    result['analysis']['stretch_type'] = "vertical_gaze_neutralizer"
+                    self.top_monitor_time = 0
+                elif self.standing_time > 1800: # 30 mins standing
+                    result['analysis']['stretch_type'] = "standing_backbend"
+                    self.standing_time = 0
+
+                # Handle Stretch Verification
+                if result['analysis'].get('stretch_type'):
+                    self.active_stretch_type = result['analysis']['stretch_type']
+                    self.stretch_start_time = now
+                    self.stretch_move_detected = False
+                
+                if self.active_stretch_type and now - self.stretch_start_time > 20:
+                    # Stretch complete: Log if movement detected
+                    if self.stretch_move_detected:
+                        logger.info(f"Stretch {self.active_stretch_type} completed successfully.")
+                        # Future: Save to stats_manager
+                    self.active_stretch_type = None
 
                 # --- Behavior & Adaptive ---
                 score = result['analysis'].get('score', 100)
@@ -145,22 +176,18 @@ class CVWorker:
                     self.slouch_start_time = None
                     self.slouch_duration = 0
                 
-                result['analysis']['slouch_duration'] = round(self.slouch_duration, 1)
-                
                 # Alerts
                 if self.slouch_duration > 10:
-                    msg = "⚠️ Posture Check: Take a deep breath and realign."
-                    result['analysis']['nudge'] = msg
+                    self.notification_manager.notify("Posture-Sense", "Posture Check: Take a deep breath.", "slouch")
+                    result['analysis']['nudge'] = "⚠️ Posture Check: Take a deep breath and realign."
                     result['analysis']['stretch_type'] = "realign"
-                    self.notification_manager.notify("Posture-Sense", msg, "slouch")
 
-                if self.static_duration > 1200: # 20 mins
-                    msg = "🔄 Movement Break: Try a shoulder roll or thoracic stretch!"
-                    result['analysis']['nudge'] = msg
+                if self.static_duration > 1200:
+                    self.notification_manager.notify("Movement Break", "You've been stationary for 20m.", "movement")
+                    result['analysis']['nudge'] = "🔄 Movement Break: Try a shoulder roll!"
                     result['analysis']['stretch_type'] = "thoracic_extension"
-                    self.notification_manager.notify("Movement Break", msg, "movement")
 
-                # --- Eye Strain ---
+                # Blink / 20-20-20
                 is_blinking = result.get('is_blinking', False)
                 if is_blinking and not self.last_blink_state:
                     self.blink_count += 1
@@ -170,33 +197,19 @@ class CVWorker:
                 blink_rate = len(self.blink_timestamps)
                 result['analysis']['blink_rate'] = blink_rate
                 
-                if blink_rate > 0 and blink_rate < 8:
-                    msg = "Low blink rate detected. Take a moment to blink!"
-                    result['analysis']['eye_strain_warning'] = msg
-                    self.notification_manager.notify("Eye Strain", msg, "blink")
-
                 time_since_break = now - self.last_break_time
                 result['analysis']['session_duration'] = round(time_since_break, 0)
                 if time_since_break > 1200:
-                    msg = "👁️ 20-20-20 RULE: Look 20 feet away for 20 seconds!"
-                    result['analysis']['nudge'] = msg
+                    result['analysis']['nudge'] = "👁️ 20-20-20 RULE: Look 20 feet away!"
                     result['analysis']['stretch_type'] = "vision_recovery"
-                    self.notification_manager.notify("Break Time", msg, "break")
+                    self.notification_manager.notify("Break Time", "Look 20 feet away.", "break")
 
-                # --- Stats & Summary ---
                 if now - self.last_stats_record_time > 60:
                     self.stats_manager.record_minute(result['analysis'])
                     self.last_stats_record_time = now
-
                 result['analysis']['stats'] = self.stats_manager.get_summary(score)
 
-                # 4. Pre-Fatigue Alert (Track 007)
-                prediction = result['analysis']['stats'].get('fatigue_prediction')
-                if prediction and prediction.get('imminent') and prediction.get('minutes_until', 99) <= 5:
-                    msg = f"📉 PREDICTIVE ALERT: Your posture is likely to degrade in {prediction['minutes_until']}m. Take a quick stretch!"
-                    result['analysis']['nudge'] = msg
-                    self.notification_manager.notify("Fatigue Warning", msg, "fatigue")
-                # Window
+                # Window Suggester
                 ess_y = result['ess']['target_y']
                 target_y = result['window']['y'] + (result['window']['height'] / 2) if result['window'] else 0
                 if target_y < ess_y - 150: result['analysis']['placement_suggestion'] = "Move active window DOWN."
