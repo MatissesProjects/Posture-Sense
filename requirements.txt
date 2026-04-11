@@ -13,3 +13,4 @@ httptools
 pandas
 scikit-learn
 win10toast
+cryptography

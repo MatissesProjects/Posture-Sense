@@ -26,6 +26,7 @@ class CVWorker:
         self.is_running = False
         self.thread = None
         self.mirror_mode = False
+        self.privacy_mode = False
         self.last_result = None
         
         # Behavioral Tracking
@@ -66,6 +67,11 @@ class CVWorker:
         self.mirror_mode = not self.mirror_mode
         return self.mirror_mode
 
+    def toggle_privacy(self):
+        """ Toggles privacy mode (kills camera feed). """
+        self.privacy_mode = not self.privacy_mode
+        return self.privacy_mode
+
     def calibrate(self):
         if self.last_result and self.last_result.get('pose'):
             return self.pipeline.posture_analyzer.calibrate(self.last_result['pose'])
@@ -86,6 +92,21 @@ class CVWorker:
 
     def _run(self):
         while self.is_running:
+            if self.privacy_mode:
+                # In Privacy Mode, we don't even read the camera
+                result = {
+                    "analysis": {
+                        "status": "Privacy Mode Active",
+                        "score": 100,
+                        "feedback": "Camera Disabled for Privacy."
+                    },
+                    "workspace": self.get_layout_info(),
+                    "pose": {}, "iris": {}
+                }
+                if self.callback: self.callback(result, None)
+                time.sleep(0.5)
+                continue
+
             success, frame = self.cap.read()
             if not success: time.sleep(0.1); continue
             if self.mirror_mode: frame = cv2.flip(frame, 1)

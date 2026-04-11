@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
-import { Activity, Camera, Settings, Shield, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Eye } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, User, Smile, Meh, Frown, Volume2, VolumeX, Timer, Eye } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
   const [calibrating, setCalibrating] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [privacyActive, setPrivacyActive] = useState(false);
   const lastNudgeRef = useRef<string | null>(null);
 
   // Guided Stretch State
@@ -33,6 +34,16 @@ export default function PostureDashboard() {
       await fetch('http://127.0.0.1:8000/api/toggle-mirror', { method: 'POST' });
     } catch (err) {
       console.error('Toggle mirror failed', err);
+    }
+  };
+
+  const handleTogglePrivacy = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/toggle-privacy', { method: 'POST' });
+      const result = await res.json();
+      setPrivacyActive(result.privacy_mode);
+    } catch (err) {
+      console.error('Toggle privacy failed', err);
     }
   };
 
@@ -163,6 +174,14 @@ export default function PostureDashboard() {
           </div>
         </div>
         <div className="flex gap-4">
+          <button 
+            onClick={handleTogglePrivacy} 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border ${privacyActive ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+            title="Privacy Shield (Stop Camera)"
+          >
+            {privacyActive ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+            {privacyActive ? 'Privacy Active' : 'Privacy Shield'}
+          </button>
           <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-2 rounded-lg border transition-all ${soundEnabled ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
             {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
           </button>
@@ -184,10 +203,19 @@ export default function PostureDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative group">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Live Tracker</h3>
-              <PostureCanvas onData={setData} />
-              <div className="absolute bottom-8 right-8 bg-slate-900/90 p-3 rounded-full border border-slate-700 shadow-2xl transition-all group-hover:scale-110">
-                <PostureAvatar score={score} />
-              </div>
+              {privacyActive ? (
+                <div className="w-full aspect-video bg-slate-950 rounded-xl flex flex-col items-center justify-center border border-slate-800 text-slate-500 gap-4">
+                  <ShieldOff className="w-16 h-16 opacity-20" />
+                  <p className="font-bold uppercase tracking-widest text-xs">Camera Access Blocked</p>
+                </div>
+              ) : (
+                <PostureCanvas onData={setData} />
+              )}
+              {!privacyActive && (
+                <div className="absolute bottom-8 right-8 bg-slate-900/90 p-3 rounded-full border border-slate-700 shadow-2xl transition-all group-hover:scale-110">
+                  <PostureAvatar score={score} />
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col">
@@ -272,7 +300,6 @@ export default function PostureDashboard() {
             </div>
           </div>
 
-          {/* Track 007: Historical Trends */}
           <PostureTrends />
         </div>
       </main>

@@ -91,6 +91,13 @@ async def toggle_mirror():
         return {"mirror_mode": mirror_mode}
     return {"error": "Worker not initialized"}
 
+@app.post("/api/toggle-privacy")
+async def toggle_privacy():
+    if cv_worker:
+        privacy_mode = cv_worker.toggle_privacy()
+        return {"privacy_mode": privacy_mode}
+    return {"error": "Worker not initialized"}
+
 @app.get("/api/history")
 async def get_history(limit: int = 100):
     if cv_worker:
