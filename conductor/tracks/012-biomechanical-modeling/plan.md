@@ -5,8 +5,8 @@
 - [x] Create a "Physical Workspace" coordinate system (mapping pixels to estimated cm).
 
 ## Phase 2: Center of Mass (CoM)
-- [ ] Implement CoM estimation using weighted body segment averages.
-- [ ] Detect "Leaning" (CoM deviation from the stable base of support).
+- [x] Implement CoM estimation using weighted body segment averages in `PostureAnalyzer.calculate_com`.
+- [x] Detect "Leaning" (CoM deviation from the stable base of support).
 - [ ] Visualize the CoM vector on the live dashboard.
 
 ## Phase 3: Kinematic Chain Analysis

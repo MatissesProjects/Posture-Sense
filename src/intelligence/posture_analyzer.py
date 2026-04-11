@@ -72,6 +72,23 @@ class PostureAnalyzer:
             }
         return physical_pose
 
+    def calculate_com(self, physical_pose):
+        if not physical_pose: return None
+        weights = {"head": 0.15, "trunk": 0.60, "arms": 0.25}
+        head_com = np.array([physical_pose["nose"]["x"], physical_pose["nose"]["y"], physical_pose["nose"]["z"]])
+        l_s, r_s = physical_pose["left_shoulder"], physical_pose["right_shoulder"]
+        l_h = physical_pose.get("left_hip", l_s)
+        r_h = physical_pose.get("right_hip", r_s)
+        trunk_pts = np.array([[l_s["x"], l_s["y"], l_s["z"]], [r_s["x"], r_s["y"], r_s["z"]], [l_h["x"], l_h["y"], l_h["z"]], [r_h["x"], r_h["y"], r_h["z"]]])
+        trunk_com = np.mean(trunk_pts, axis=0)
+        arm_pts = []
+        for side in ["left", "right"]:
+            if f"{side}_elbow" in physical_pose: arm_pts.append([physical_pose[f"{side}_elbow"]["x"], physical_pose[f"{side}_elbow"]["y"], physical_pose[f"{side}_elbow"]["z"]])
+            if f"{side}_wrist" in physical_pose: arm_pts.append([physical_pose[f"{side}_wrist"]["x"], physical_pose[f"{side}_wrist"]["y"], physical_pose[f"{side}_wrist"]["z"]])
+        arm_com = np.mean(arm_pts, axis=0) if arm_pts else trunk_com
+        total_com = (head_com * weights["head"] + trunk_com * weights["trunk"] + arm_com * weights["arms"])
+        return {"x": round(float(total_com[0]), 2), "y": round(float(total_com[1]), 2), "z": round(float(total_com[2]), 2)}
+
     def calibrate(self, pose_data):
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data: return False
         nose, l_s, r_s = pose_data["nose"], pose_data["left_shoulder"], pose_data["right_shoulder"]
@@ -87,46 +104,39 @@ class PostureAnalyzer:
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
 
-        # 1. Distance & Normalization
         distance_cm = self.estimate_distance(iris_data) if iris_data else None
         physical_pose = self.normalize_to_physical(pose_data, distance_cm)
+        com = self.calculate_com(physical_pose) if physical_pose else None
 
-        # 2. Shoulder Levelness
         l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
         shoulder_diff = abs(l_s['y'] - r_s['y'])
         shoulder_score = max(0, 100 - (shoulder_diff * 1000))
 
-        # 3. Neck Tilt
         nose = pose_data["nose"]
         mid_s_x, mid_s_y = (l_s['x'] + r_s['x'])/2, (l_s['y'] + r_s['y'])/2
         neck_tilt_lat = abs(nose['x'] - mid_s_x)
         neck_score = max(0, 100 - (neck_tilt_lat * 2000))
 
-        # 4. Slouching
         slouch_score = 100
         if self.baseline:
             baseline_dist = self.baseline["shoulder_y"] - self.baseline["nose_y"]
             dist_diff = max(0, baseline_dist - (mid_s_y - nose['y']))
             slouch_score = max(0, 100 - (dist_diff * 1500))
 
-        # 5. Elbows
         elbow_score = 100
         if "left_elbow" in pose_data and "left_wrist" in pose_data:
             angle = self.calculate_angle(pose_data["left_shoulder"], pose_data["left_elbow"], pose_data["left_wrist"])
             elbow_score = max(0, 100 - (abs(angle - 105) * 2))
 
-        # 6. Spine
         spine_score = 100
         if "left_hip" in pose_data:
             mid_h_x = (pose_data["left_hip"]['x'] + pose_data["right_hip"]['x'])/2
             spine_score = max(0, 100 - (abs(mid_s_x - mid_h_x) * 1000))
 
-        # 7. Typing & Sit/Stand
         typing_score = self.calculate_typing_strain(pose_data, hand_data)
         if self.baseline: self.is_standing = nose['y'] < self.baseline["nose_y"] - 0.08
         else: self.is_standing = nose['y'] < 0.38
 
-        # 8. Industry Standards
         rula = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
         reba = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
 
@@ -135,7 +145,7 @@ class PostureAnalyzer:
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": self.baseline is not None,
-            "distance_cm": distance_cm, "physical_pose": physical_pose, "typing_score": typing_score,
+            "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "typing_score": typing_score,
             "rula": rula, "reba": reba,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
