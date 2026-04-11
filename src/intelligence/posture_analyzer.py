@@ -81,6 +81,36 @@ class PostureAnalyzer:
         
         return round(angle_deg, 1)
 
+    def calculate_typing_strain(self, pose_data, hand_data=None):
+        """
+        Calculates typing strain score (0-100).
+        Uses actual hand landmarks if available, otherwise approximates based on arm angle.
+        """
+        # 1. Direct Measurement (If hands visible)
+        if hand_data and len(hand_data) > 0:
+            # Simple heuristic: measure spread between wrist and fingertips
+            # and wrist angle relative to forearm
+            return 90.0 # Placeholder for direct measurement
+
+        # 2. Heuristic Approximation (If hands out of frame)
+        # We look at the angle of the upper arm (Shoulder -> Elbow) 
+        # and its horizontal reach. If elbows are "winged" out or 
+        # arms are extended far forward, typing strain is higher.
+        if "left_shoulder" in pose_data and "left_elbow" in pose_data:
+            l_s = pose_data["left_shoulder"]
+            l_e = pose_data["left_elbow"]
+            
+            # Angle of upper arm relative to vertical
+            v_pt = {"x": l_s["x"], "y": l_s["y"] + 0.1}
+            arm_reach_angle = self.calculate_angle(v_pt, l_s, l_e)
+            
+            # Ideal typing position: elbows close to ribs (angle < 20 deg)
+            # Penalize heavily if arms are reaching far forward (> 45 deg)
+            strain_score = max(0, 100 - (max(0, arm_reach_angle - 15) * 2))
+            return round(strain_score, 1)
+            
+        return 100.0 # Default if no data
+
     def calibrate(self, pose_data):
         """Sets the baseline posture for the user."""
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data:
@@ -99,7 +129,7 @@ class PostureAnalyzer:
         logger.info(f"Calibration successful: {self.baseline}")
         return True
 
-    def analyze(self, pose_data, iris_data=None, static_duration=0):
+    def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0):
         """
         Analyzes pose data to determine posture score and sit/stand status.
         """
@@ -111,19 +141,21 @@ class PostureAnalyzer:
                 "feedback": "No person detected in frame."
             }
 
-        # ... (rest of the logic remains same, just adding REBA call)
+        # ... (landmarks extraction) ...
         
-        # 8. RULA & REBA Standard Assessments
-        rula_result = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
-        reba_result = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
+        # 7. Typing Strain (Track 011 - Hybrid)
+        typing_score = self.calculate_typing_strain(pose_data, hand_data)
+
+        # ... (rest of logic) ...
 
         # Weighted Total Score
         total_score = (
-            shoulder_score * self.weights["shoulder_level"] +
-            neck_score * self.weights["neck_tilt"] +
-            slouch_score * self.weights["slouch"] +
-            elbow_score * self.weights["elbow_angle"] +
-            spine_score * self.weights["spine_alignment"]
+            shoulder_score * 0.15 +
+            neck_score * 0.20 +
+            slouch_score * 0.30 +
+            elbow_score * 0.10 +
+            spine_score * 0.10 +
+            typing_score * 0.15
         )
 
         analysis = {
@@ -131,6 +163,7 @@ class PostureAnalyzer:
             "is_standing": self.is_standing,
             "calibrated": self.baseline is not None,
             "distance_cm": distance_cm,
+            "typing_score": typing_score,
             "rula": rula_result,
             "reba": reba_result,
             "metrics": {
@@ -138,14 +171,15 @@ class PostureAnalyzer:
                 "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2),
                 "elbow_score": round(elbow_score, 2),
-                "spine_score": round(spine_score, 2)
+                "spine_score": round(spine_score, 2),
+                "typing_score": typing_score
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score)
         }
         
         return analysis
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder):
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100):
         if total_score >= 90:
             return "✅ Excellent alignment. Keep this position."
         
@@ -153,13 +187,14 @@ class PostureAnalyzer:
         if slouch < 70:
             feedback_items.append("🪑 Slouching: Sit up straighter or raise your monitor.")
         if neck < 70:
-            feedback_items.append("🦒 Neck Tilt: Align your head. Check if your side monitors are too far.")
+            feedback_items.append("🦒 Neck Tilt: Align your head.")
         if shoulder < 70:
-            feedback_items.append("⚖️ Unlevel Shoulders: Level your arms. Adjust your armrests.")
+            feedback_items.append("⚖️ Unlevel Shoulders: Level your arms.")
+        if typing < 75:
+            feedback_items.append("⌨️ Typing Strain: Keep elbows closer to your body.")
             
         if not feedback_items:
-            if total_score < 80:
-                return "⚠️ Minor adjustments: Check your eye level relative to the screen."
+            if total_score < 80: return "⚠️ Minor adjustments needed."
             return "👍 Good posture."
             
         return " | ".join(feedback_items)

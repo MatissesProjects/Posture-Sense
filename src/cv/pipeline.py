@@ -2,12 +2,14 @@ import cv2
 import json
 from src.cv.pose_detector import PoseDetector
 from src.cv.eye_tracker import EyeTracker
+from src.cv.hand_tracker import HandTracker
 from src.intelligence.posture_analyzer import PostureAnalyzer
 
 class CVPipeline:
     def __init__(self):
         self.pose_detector = PoseDetector()
         self.eye_tracker = EyeTracker()
+        self.hand_tracker = HandTracker()
         self.posture_analyzer = PostureAnalyzer()
 
     def process_frame(self, img, static_duration=0):
@@ -24,13 +26,18 @@ class CVPipeline:
         gaze_ratio = self.eye_tracker.get_gaze_ratio(iris_lms, w, h)
         head_pose = self.eye_tracker.get_head_pose()
         is_blinking = self.eye_tracker.get_blink_status()
+
+        # Hand tracking (Track 011)
+        self.hand_tracker.find_hands(img)
+        hand_lms = self.hand_tracker.get_hand_landmarks(w, h)
         
         # Posture Analysis
-        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, static_duration)
+        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, hand_lms, static_duration)
         
         data = {
             "pose": pose_lms,
             "iris": iris_lms,
+            "hands": hand_lms,
             "gaze_ratio": gaze_ratio,
             "head_pose": head_pose,
             "is_blinking": is_blinking,
