@@ -15,5 +15,6 @@
 - [x] Detect "Slump Projection" (where the torso collapses forward even if the head is level).
 
 ## Phase 4: Biomechanical Risk Score
-- [ ] Replace simple weighted scoring with a model-based "Structural Load" score.
-- [ ] Identify high-shear moments in the posture timeline.
+- [x] Replace simple weighted scoring with a model-based "Structural Load" score in `PostureAnalyzer.calculate_biomechanical_risk`.
+- [x] Identify high-shear moments (flexion/leaning) in the analysis loop.
+- [x] Refactor `total_score` to prioritize biomechanical data (40% weight).

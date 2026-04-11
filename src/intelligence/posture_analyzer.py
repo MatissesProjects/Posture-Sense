@@ -13,7 +13,7 @@ class PostureAnalyzer:
         self.rula_scorer = RULAScorer()
         self.reba_scorer = REBAScorer()
         
-        # Scoring weights
+        # Scoring weights (Now used as baseline for the hybrid model)
         self.weights = {
             "shoulder_level": 0.15,
             "neck_tilt": 0.20,
@@ -100,13 +100,35 @@ class PostureAnalyzer:
         torso_vec = mid_s - mid_h
         vertical = np.array([0, -1, 0])
         def angle_with_vertical(vec):
-            v_unit = vec / (np.linalg.norm(vec) + 1e-6)
+            norm = np.linalg.norm(vec)
+            if norm < 1e-6: return 0
+            v_unit = vec / norm
             dot = np.dot(v_unit, vertical)
             return np.arccos(np.clip(dot, -1.0, 1.0)) * 180.0 / np.pi
         neck_flexion = angle_with_vertical(cervical_vec)
         trunk_flexion = angle_with_vertical(torso_vec)
         slump_depth = mid_s[2] - mid_h[2]
         return {"neck_flexion": round(float(neck_flexion), 1), "trunk_flexion": round(float(trunk_flexion), 1), "slump_depth_cm": round(float(slump_depth), 2), "is_slumping": slump_depth > 5.0}
+
+    def calculate_biomechanical_risk(self, com, spine):
+        """
+        Computes a risk score (0-100) based on structural load.
+        Higher load = lower score.
+        """
+        if not com or not spine: return 100
+        
+        # 1. Moment Arm (CoM deviation from vertical axis)
+        # Ideally CoM X and Z should be close to 0 relative to baseline
+        com_strain = abs(com["x"]) * 5 + abs(com["z"]) * 10
+        
+        # 2. Spinal Shear (Rotation/Flexion load)
+        # Neck flexion > 20 deg or Trunk flexion > 15 deg increases risk
+        spine_strain = max(0, spine["neck_flexion"] - 10) * 2 + max(0, spine["trunk_flexion"] - 10) * 3
+        
+        total_strain = com_strain + spine_strain
+        load_score = max(0, 100 - total_strain)
+        
+        return round(load_score, 1)
 
     def calibrate(self, pose_data):
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data: return False
@@ -123,11 +145,16 @@ class PostureAnalyzer:
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
 
+        # 1. 3D Model Generation
         distance_cm = self.estimate_distance(iris_data) if iris_data else None
         physical_pose = self.normalize_to_physical(pose_data, distance_cm)
         com = self.calculate_com(physical_pose) if physical_pose else None
         spine = self.analyze_spine_kinematics(physical_pose) if physical_pose else None
 
+        # 2. Biomechanical Risk (Phase 4)
+        bio_score = self.calculate_biomechanical_risk(com, spine)
+
+        # 3. Traditional Metrics
         l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
         shoulder_diff = abs(l_s['y'] - r_s['y'])
         shoulder_score = max(0, 100 - (shoulder_diff * 1000))
@@ -157,20 +184,22 @@ class PostureAnalyzer:
         if self.baseline: self.is_standing = nose['y'] < self.baseline["nose_y"] - 0.08
         else: self.is_standing = nose['y'] < 0.38
 
+        # 4. Standard Scores
         rula = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
         reba = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
 
-        total_score = (shoulder_score * 0.15 + neck_score * 0.20 + slouch_score * 0.30 + 
-                       elbow_score * 0.10 + spine_score * 0.10 + typing_score * 0.15)
+        # 5. Hybrid Final Score (Prioritizing Biomechanics)
+        total_score = (bio_score * 0.40 + slouch_score * 0.20 + neck_score * 0.15 + 
+                       typing_score * 0.10 + shoulder_score * 0.10 + elbow_score * 0.05)
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": self.baseline is not None,
-            "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "spine": spine, "typing_score": typing_score,
-            "rula": rula, "reba": reba,
+            "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "spine": spine, "bio_score": bio_score,
+            "typing_score": typing_score, "rula": rula, "reba": reba,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
-                "spine_score": round(spine_score, 2), "typing_score": typing_score
+                "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score
             },
             "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine)
         }
@@ -182,7 +211,7 @@ class PostureAnalyzer:
         if neck < 70: items.append("🦒 Check neck tilt.")
         if shoulder < 70: items.append("⚖️ Level shoulders.")
         if typing < 75: items.append("⌨️ Typing strain.")
-        if spine and spine.get("is_slumping"): items.append("📉 Torso leaning forward.")
+        if spine and spine.get("is_slumping"): items.append("📉 Spine load: Leaning forward.")
         return " | ".join(items) if items else "👍 Good posture."
 
 if __name__ == "__main__":
