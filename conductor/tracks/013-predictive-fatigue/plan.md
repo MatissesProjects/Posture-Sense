@@ -6,8 +6,9 @@
 - [x] Correlate posture with time-of-day and session duration.
 
 ## Phase 2: Predictive Model Integration
-- [ ] Implement a simple RNN or Linear Regression model to predict "Time to Slump."
-- [ ] Identify the user's "Fatigue Signature" (specific patterns that precede a major posture drop).
+- [x] Implement an advanced **Random Forest Regressor** in `src/intelligence/fatigue_predictor.py`.
+- [x] Integrate multi-feature prediction (avg_15m, slump_freq, time_of_day).
+- [x] Identify the user's "Fatigue Signature" through historical training.
 
 ## Phase 3: Proactive Interventions
 - [ ] Trigger micro-breaks *before* the predicted slump occurs.

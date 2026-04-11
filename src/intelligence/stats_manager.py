@@ -119,10 +119,17 @@ class StatsManager:
         if now - self.last_train_time > 3600:
             if self.fatigue_predictor.train():
                 self.last_train_time = now
+fatigue_prediction = None
+if current_score is not None:
+    # Pass all features for advanced prediction
+    prediction_features = {
+        "score": current_score,
+        "avg_15m": avg_15m,
+        "slump_freq_5m": sum(1 for l in recent_logs[:5] if l[2] < 70)
+    }
+    fatigue_prediction = self.fatigue_predictor.predict_slump(prediction_features)
 
-        fatigue_prediction = None
-        if current_score is not None:
-            fatigue_prediction = self.fatigue_predictor.predict_slump(current_score)
+return {
 
         # Calculate short-term moving averages from database
         recent_logs = self.db_manager.get_recent_history(limit=60)
