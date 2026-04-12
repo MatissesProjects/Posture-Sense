@@ -111,15 +111,14 @@ class CVWorker:
             if not success: time.sleep(0.1); continue
             if self.mirror_mode: frame = cv2.flip(frame, 1)
             
-            # Calculate viewing angle from last frame or default
+            # Calculate viewing angle from gaze
             viewing_angle = 0
-            if self.last_result and 'ess' in self.last_result:
-                pose = self.last_result.get('pose')
-                if pose and 'nose' in pose:
-                    eye_y = pose['nose']['y'] * self.last_result['resolution']['height']
-                    target_y = self.last_result['ess']['target_y']
-                    dist = self.last_result['analysis'].get('distance_cm', 60)
-                    viewing_angle = self.pipeline.posture_analyzer.calculate_viewing_angle(eye_y, target_y, dist)
+            if self.last_result and 'gaze_ratio' in self.last_result and self.last_result['gaze_ratio']:
+                gaze_y_norm = self.last_result['gaze_ratio']['y']
+                # Assume eyes are level with webcam (normalized 0.5) per user setup
+                eye_y_cam_norm = 0.5 
+                dist = self.last_result['analysis'].get('distance_cm', 60)
+                viewing_angle = self.pipeline.posture_analyzer.calculate_viewing_angle(eye_y_cam_norm, gaze_y_norm, dist)
 
             result = self.pipeline.process_frame(frame, self.static_duration, viewing_angle)
             result['workspace'] = self.get_layout_info()
