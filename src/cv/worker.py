@@ -121,7 +121,7 @@ class CVWorker:
                 eye_y = pose['nose']['y']
                 result['ess'] = self.window_manager.get_ergonomic_sweet_spot(eye_y)
                 
-                # --- Movement & Compliance ---
+                # --- Track 009: Specialized Stretches ---
                 move_dist = 0
                 if self.last_pose_landmarks:
                     for key in ['nose', 'left_shoulder', 'right_shoulder']:
@@ -135,86 +135,57 @@ class CVWorker:
                 self.static_duration = now - self.last_movement_time
                 result['analysis']['static_duration'] = round(self.static_duration, 1)
 
-                # --- Specialized Track 009 Logic ---
-                looking_at = result['analysis'].get('looking_at', "")
-                if "top" in looking_at: self.top_monitor_time += 1
-                else: self.top_monitor_time = 0
-
-                is_standing = result['analysis'].get('is_standing', False)
-                if is_standing: self.standing_time += 1
-                else: self.standing_time = 0
-
-                # Trigger Stretches
-                if self.top_monitor_time > 600: # 10 mins looking up
-                    result['analysis']['stretch_type'] = "vertical_gaze_neutralizer"
-                    self.top_monitor_time = 0
-                elif self.standing_time > 1800: # 30 mins standing
-                    result['analysis']['stretch_type'] = "standing_backbend"
-                    self.standing_time = 0
-
-                # Handle Stretch Verification
-                if result['analysis'].get('stretch_type'):
-                    self.active_stretch_type = result['analysis']['stretch_type']
-                    self.stretch_start_time = now
-                    self.stretch_move_detected = False
-                
-                if self.active_stretch_type and now - self.stretch_start_time > 20:
-                    # Stretch complete: Log if movement detected
-                    if self.stretch_move_detected:
-                        logger.info(f"Stretch {self.active_stretch_type} completed successfully.")
-                        # Future: Save to stats_manager
-                    self.active_stretch_type = None
-
                 # --- Behavior & Adaptive ---
                 score = result['analysis'].get('score', 100)
                 app_age = self.stats_manager.get_app_age_days()
-                current_threshold = min(75, 50 + (app_age * 2))
+                
+                # --- Track 013: AI Fatigue & Proactive Interventions ---
+                result['analysis']['stats'] = self.stats_manager.get_summary(score)
+                prediction = result['analysis']['stats'].get('fatigue_prediction')
+                
+                # Base threshold (gradually increases over 14 days)
+                base_threshold = min(75, 50 + (app_age * 2))
+                
+                # Proactive Intervention: If fatigue is high, tighten threshold by up to 10%
+                fatigue_penalty = 0
+                if prediction and prediction.get('imminent'):
+                    # The more tired the AI predicts you are, the stricter we get
+                    predicted_score = prediction.get('predicted_score', 100)
+                    fatigue_penalty = max(0, (75 - predicted_score) / 2)
+                
+                current_threshold = base_threshold + fatigue_penalty
+                result['analysis']['active_threshold'] = round(current_threshold, 1)
 
                 if score < current_threshold:
                     if self.slouch_start_time is None: self.slouch_start_time = now
                     self.slouch_duration = now - self.slouch_start_time
                 else:
-                    if self.slouch_start_time is not None:
-                        # Record a micro-slump if duration was between 1 and 10 seconds
-                        if 1 < self.slouch_duration < 10:
-                            self.micro_slumps += 1
+                    if self.slouch_start_time is not None and 1 < self.slouch_duration < 10:
+                        self.micro_slumps += 1
                     self.slouch_start_time = None
                     self.slouch_duration = 0
+                
+                # Proactive Micro-Break Trigger
+                if prediction and prediction.get('imminent') and not self.active_stretch_type:
+                    if now - self.last_break_time > 600: # Max one proactive break every 10 mins
+                        msg = "📉 PREDICTIVE ALERT: Posture fatigue detected. Let's reset before you slump!"
+                        result['analysis']['stretch_type'] = "realign"
+                        result['analysis']['nudge'] = msg
+                        self.notification_manager.notify("AI Coaching", msg, "fatigue")
+                        self.last_break_time = now # Treat as a break
 
-                result['analysis']['slouch_duration'] = round(self.slouch_duration, 1)
-                result['analysis']['micro_slumps'] = self.micro_slumps
-
+                # Existing Alerts
                 if self.slouch_duration > 10:
-                    self.notification_manager.notify("Posture-Sense", "Posture Check: Take a deep breath.", "slouch")
-                    result['analysis']['nudge'] = "⚠️ Posture Check: Take a deep breath and realign."
+                    msg = "⚠️ Posture Check: Take a deep breath."
+                    result['analysis']['nudge'] = msg
                     result['analysis']['stretch_type'] = "realign"
+                    self.notification_manager.notify("Posture-Sense", msg, "slouch")
 
                 if self.static_duration > 1200:
-                    self.notification_manager.notify("Movement Break", "You've been stationary for 20m.", "movement")
-                    result['analysis']['nudge'] = "🔄 Movement Break: Try a shoulder roll!"
+                    msg = "🔄 Movement Break: Try a shoulder roll!"
+                    result['analysis']['nudge'] = msg
                     result['analysis']['stretch_type'] = "thoracic_extension"
-
-                # Blink / 20-20-20
-                is_blinking = result.get('is_blinking', False)
-                if is_blinking and not self.last_blink_state:
-                    self.blink_count += 1
-                    self.blink_timestamps.append(now)
-                self.last_blink_state = is_blinking
-                self.blink_timestamps = [t for t in self.blink_timestamps if now - t < 60]
-                blink_rate = len(self.blink_timestamps)
-                result['analysis']['blink_rate'] = blink_rate
-                
-                time_since_break = now - self.last_break_time
-                result['analysis']['session_duration'] = round(time_since_break, 0)
-                if time_since_break > 1200:
-                    result['analysis']['nudge'] = "👁️ 20-20-20 RULE: Look 20 feet away!"
-                    result['analysis']['stretch_type'] = "vision_recovery"
-                    self.notification_manager.notify("Break Time", "Look 20 feet away.", "break")
-
-                if now - self.last_stats_record_time > 60:
-                    self.stats_manager.record_minute(result['analysis'])
-                    self.last_stats_record_time = now
-                result['analysis']['stats'] = self.stats_manager.get_summary(score)
+                    self.notification_manager.notify("Movement Break", msg, "movement")
 
                 # Window Suggester
                 ess_y = result['ess']['target_y']
@@ -225,8 +196,6 @@ class CVWorker:
             else:
                 self.slouch_start_time = None
                 self.slouch_duration = 0
-                self.static_duration = 0
-                self.last_movement_time = now
                 result['analysis']['status'] = "User Not Present"
                 result['analysis']['score'] = 100
             

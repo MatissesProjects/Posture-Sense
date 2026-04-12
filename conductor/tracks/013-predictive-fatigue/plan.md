@@ -11,8 +11,9 @@
 - [x] Identify the user's "Fatigue Signature" through historical training.
 
 ## Phase 3: Proactive Interventions
-- [ ] Trigger micro-breaks *before* the predicted slump occurs.
-- [ ] Adjust alert sensitivity: Get stricter as the user gets more tired.
+- [x] Trigger micro-breaks *before* the predicted slump occurs using the AI model.
+- [x] Implement **Adaptive Alert Sensitivity**: Dynamically tighten thresholds as predicted fatigue increases.
+- [x] Throttled proactive interventions to maintain user focus (flow state).
 
 ## Phase 4: AI Coaching Dashboard
 - [ ] Show "Predicted Fatigue" gauge on the UI.
