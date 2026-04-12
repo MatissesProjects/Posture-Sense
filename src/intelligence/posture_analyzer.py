@@ -217,6 +217,20 @@ class PostureAnalyzer:
         
         return round(fidget_score, 2)
 
+    def calculate_lateral_lean(self, pose_data):
+        """
+        Calculates lateral spinal deviation (leaning to one side).
+        Compares shoulder midpoint X to hip midpoint X.
+        """
+        if "left_shoulder" not in pose_data or "left_hip" not in pose_data: return 0.0
+        
+        mid_s_x = (pose_data["left_shoulder"]['x'] + pose_data["right_shoulder"]['x']) / 2
+        mid_h_x = (pose_data["left_hip"]['x'] + pose_data["right_hip"]['x']) / 2
+        
+        # deviation in normalized units
+        deviation = mid_s_x - mid_h_x 
+        return round(deviation, 4)
+
     def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0, viewing_angle=0, brightness=100, eye_data=None):
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
@@ -317,6 +331,11 @@ class PostureAnalyzer:
             angle = self.calculate_angle(pose_data["left_shoulder"], pose_data["left_elbow"], pose_data["left_wrist"])
             elbow_score = max(0, 100 - (abs(angle - 105) * 2))
 
+        # Track 020: Lateral Lean
+        lateral_lean = self.calculate_lateral_lean(pose_data)
+        # Threshold: > 0.05 normalized units is a significant lean
+        lateral_lean_score = max(0, 100 - (abs(lateral_lean) * 1000))
+
         spine_score = 100
         if "left_hip" in pose_data:
             mid_h_x = (pose_data["left_hip"]['x'] + pose_data["right_hip"]['x'])/2
@@ -332,10 +351,10 @@ class PostureAnalyzer:
 
         # 6. Hybrid Final Score (Prioritizing Biomechanics, Clinical Metrics & Stability)
         # Fidget score acts as a secondary penalty for fatigue instability
-        total_score = (bio_score * 0.35 + cva_score * 0.15 + protraction_score * 0.10 + 
+        total_score = (bio_score * 0.30 + cva_score * 0.15 + protraction_score * 0.10 + 
+                       lateral_lean_score * 0.10 + # Track 020
                        slouch_score * 0.10 + neck_score * 0.10 + 
-                       fidget_score * 0.10 + # Fatigue stability
-                       typing_score * 0.05 + shoulder_score * 0.05)
+                       fidget_score * 0.05 + typing_score * 0.05 + shoulder_score * 0.05)
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": len(self.baselines) > 0,
@@ -347,18 +366,19 @@ class PostureAnalyzer:
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score,
                 "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2),
-                "fidget_score": fidget_score
+                "fidget_score": fidget_score, "lateral_lean": lateral_lean, "lateral_lean_score": lateral_lean_score
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score, lateral_lean_score)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100, fidget=100):
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100, fidget=100, lateral_lean=100):
         if total_score >= 90 and not env: return "✅ Excellent alignment."
         items = []
         if env: items.append(env)
         if fidget < 75: items.append("📉 Fatigue alert: High micro-movement/restlessness.")
         if cva < 70: items.append("🐢 Forward head posture.")
         if protraction < 70: items.append("🏹 Shoulders rounded forward.")
+        if lateral_lean < 75: items.append("⚖️ Leaning to one side.")
         if slouch < 70: items.append("🪑 Slouching detected.")
         if neck < 70: items.append("🦒 Check neck tilt.")
         if shoulder < 70: items.append("⚖️ Level shoulders.")
@@ -368,7 +388,11 @@ class PostureAnalyzer:
 
 if __name__ == "__main__":
     analyzer = PostureAnalyzer()
-    mock_pose = {"nose": {"x": 0.5, "y": 0.3, "z": 0}, "left_shoulder": {"x": 0.4, "y": 0.4, "z": 0}, "right_shoulder": {"x": 0.6, "y": 0.4, "z": 0},
-                 "left_elbow": {"x": 0.35, "y": 0.55, "z": 0}, "left_wrist": {"x": 0.4, "y": 0.6, "z": 0}, "left_hip": {"x": 0.42, "y": 0.7, "z": 0}, "right_hip": {"x": 0.58, "y": 0.7, "z": 0}}
+    mock_pose = {"nose": {"x": 0.5, "y": 0.3, "z": 0}, 
+                 "left_eye": {"x": 0.48, "y": 0.28, "z": 0}, "right_eye": {"x": 0.52, "y": 0.28, "z": 0},
+                 "left_ear": {"x": 0.45, "y": 0.3, "z": 0}, "right_ear": {"x": 0.55, "y": 0.3, "z": 0},
+                 "left_shoulder": {"x": 0.4, "y": 0.4, "z": 0}, "right_shoulder": {"x": 0.6, "y": 0.4, "z": 0},
+                 "left_elbow": {"x": 0.35, "y": 0.55, "z": 0}, "left_wrist": {"x": 0.4, "y": 0.6, "z": 0}, 
+                 "left_hip": {"x": 0.42, "y": 0.7, "z": 0}, "right_hip": {"x": 0.58, "y": 0.7, "z": 0}}
     analyzer.calibrate(mock_pose)
     print(analyzer.analyze(mock_pose))

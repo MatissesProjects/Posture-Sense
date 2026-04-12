@@ -53,6 +53,8 @@ export default function PostureDashboard() {
   const typingScore = analysis.typing_score || 100;
   const cva = analysis.metrics?.cva || 0;
   const protractionScore = analysis.metrics?.protraction_score || 100;
+  const lateralLean = analysis.metrics?.lateral_lean || 0;
+  const lateralLeanScore = analysis.metrics?.lateral_lean_score || 100;
   const nudge = analysis.nudge || null;
   const stretchType = analysis.stretch_type || null;
   const blinkRate = analysis.blink_rate || 0;
@@ -68,7 +70,20 @@ export default function PostureDashboard() {
           const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
           const oscillator = audioContext.createOscillator();
           const gainNode = audioContext.createGain();
-          oscillator.connect(gainNode);
+          const panner = audioContext.createStereoPanner ? audioContext.createStereoPanner() : null;
+          
+          if (panner) {
+            // Pan sound toward the direction of the lean to nudge user back
+            // lateralLean is mid_s_x - mid_h_x. If positive, leaning RIGHT (so pan LEFT)
+            // Clamp to -1 to 1 range. 0.05 is significant.
+            const panValue = Math.max(-1, Math.min(1, lateralLean * -10));
+            panner.pan.setValueAtTime(panValue, audioContext.currentTime);
+            oscillator.connect(panner);
+            panner.connect(gainNode);
+          } else {
+            oscillator.connect(gainNode);
+          }
+          
           gainNode.connect(audioContext.destination);
           oscillator.type = 'sine';
           oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
@@ -208,12 +223,13 @@ export default function PostureDashboard() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-4">
             <MetricCard icon={<Activity className="text-blue-400" />} label="Mode" value={isStanding ? "Standing" : "Sitting"} />
             <MetricCard icon={<Maximize2 className="text-emerald-400" />} label="Distance" value={`${distance}cm`} />
             <MetricCard icon={<Monitor className="text-orange-400" />} label="Angle" value={`${angle}°`} />
             <MetricCard icon={<Compass className={`transition-colors ${cva < 50 ? 'text-rose-500' : 'text-indigo-400'}`} />} label="CVA" value={`${Math.round(cva)}°`} />
             <MetricCard icon={<Thermometer className={`transition-colors ${protractionScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Shoulders" value={`${Math.round(protractionScore)}%`} />
+            <MetricCard icon={<ArrowUpCircle className={`transition-colors ${lateralLeanScore < 75 ? 'text-rose-500' : 'text-blue-400'}`} />} label="Symmetry" value={`${Math.round(lateralLeanScore)}%`} />
             <MetricCard icon={<Keyboard className={`transition-colors ${typingScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Typing" value={`${typingScore}%`} />
             <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blinks" value={`${blinkRate}/m`} />
           </div>
