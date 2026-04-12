@@ -9,3 +9,10 @@ dist/
 build/
 .idea/
 .vscode/
+
+# Local database and keys
+posture_data.db
+.posture_key
+user_stats.json
+workspace_config.json
+reports/
