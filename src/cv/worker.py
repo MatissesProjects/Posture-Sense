@@ -202,6 +202,21 @@ class CVWorker:
                     result['analysis']['stretch_type'] = "thoracic_extension"
                     self.notification_manager.notify("Movement Break", msg, "movement")
 
+                # --- Track 024: Gaze Distribution Analytics ---
+                if now - self.last_stats_record_time >= 60:
+                    self.stats_manager.record_minute(result['analysis'], result.get('gaze_ratio'))
+                    self.last_stats_record_time = now
+
+                # Re-fetch summary with latest gaze stats
+                summary = self.stats_manager.get_summary(score)
+                result['analysis']['stats'] = summary
+                
+                if summary.get('gaze_stats', {}).get('warnings'):
+                    gaze_warnings = summary['gaze_stats']['warnings']
+                    result['analysis']['feedback'] += " | " + " | ".join(gaze_warnings)
+                    if not result['analysis'].get('nudge'):
+                        result['analysis']['nudge'] = gaze_warnings[0]
+
                 # Window Suggester
                 ess_y = result['ess']['target_y']
                 target_y = result['window']['y'] + (result['window']['height'] / 2) if result['window'] else 0

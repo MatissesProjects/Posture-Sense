@@ -342,6 +342,32 @@ export default function PostureDashboard() {
                 <p className="text-sm text-slate-500 italic">Calibrating transition model...</p>
               )}
             </div>
+
+            {/* Track 024: Gaze Distribution */}
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
+              <h3 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-orange-400" /> Gaze Distribution
+              </h3>
+              {stats.gaze_stats ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-tighter">
+                    <span className="text-orange-400">Top: {stats.gaze_stats.top_pct}%</span>
+                    <span className="text-indigo-400">Neutral: {stats.gaze_stats.neutral_pct}%</span>
+                    <span className="text-emerald-400">Bottom: {stats.gaze_stats.bottom_pct}%</span>
+                  </div>
+                  <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+                    <div className="h-full bg-orange-500 transition-all duration-1000" style={{ width: `${stats.gaze_stats.top_pct}%` }}></div>
+                    <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${stats.gaze_stats.neutral_pct}%` }}></div>
+                    <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${stats.gaze_stats.bottom_pct}%` }}></div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed italic">
+                    Reducing Top Monitor gaze bias helps prevent neck extension strain in stacked setups.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic">Awaiting gaze data...</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

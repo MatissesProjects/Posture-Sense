@@ -6,6 +6,7 @@ import logging
 from src.intelligence.database_manager import DatabaseManager
 from src.intelligence.fatigue_predictor import FatiguePredictor
 from src.intelligence.transition_predictor import TransitionPredictor
+from src.intelligence.gaze_analyzer import GazeAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ class StatsManager:
         self.db_manager = DatabaseManager()
         self.fatigue_predictor = FatiguePredictor()
         self.transition_predictor = TransitionPredictor()
+        self.gaze_analyzer = GazeAnalyzer()
         self.last_train_time = 0
         self.stats = {
             "daily_history": {}, 
@@ -45,7 +47,7 @@ class StatsManager:
         except Exception as e:
             logger.error(f"Failed to save stats: {e}")
 
-    def record_minute(self, analysis_data):
+    def record_minute(self, analysis_data, gaze_data=None):
         """ Records performance for a single minute. """
         today = datetime.date.today().isoformat()
         score = analysis_data.get("score", 0)
@@ -53,6 +55,8 @@ class StatsManager:
         # Log to Database
         self.db_manager.log_metrics(analysis_data)
         self.transition_predictor.update(analysis_data.get('is_standing', False), score)
+        if gaze_data:
+            self.gaze_analyzer.update(gaze_data)
         
         if today not in self.stats["daily_history"]:
             self.stats["daily_history"][today] = {"total_score": 0, "entries": 0, "ergonomic_minutes": 0}
@@ -149,5 +153,6 @@ class StatsManager:
             "total_ergonomic_minutes": self.stats["total_ergonomic_minutes"],
             "fatigue_prediction": fatigue_prediction,
             "transition_data": self.transition_predictor.get_predictions(),
-            "recovery_boost": self.transition_predictor.calculate_recovery_boost()
+            "recovery_boost": self.transition_predictor.calculate_recovery_boost(),
+            "gaze_stats": self.gaze_analyzer.get_distribution_stats()
         }

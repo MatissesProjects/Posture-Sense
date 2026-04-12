@@ -5,10 +5,10 @@
 - Define specific data models and UI components needed.
 
 ## 2. Execution Steps
-- [ ] Step 1: Core logic implementation.
-- [ ] Step 2: Integration with CV/Intelligence/System layers.
-- [ ] Step 3: UI/UX updates.
-- [ ] Step 4: Testing and validation.
+- [x] Step 1: Core logic implementation (GazeAnalyzer for region tracking).
+- [x] Step 2: Integration with CV/Intelligence/System layers (StatsManager & CVWorker updates).
+- [x] Step 3: UI/UX updates (Gaze Distribution bar on dashboard).
+- [x] Step 4: Testing and validation.
 
 ## 3. Validation
-- Ensure tests pass and the feature meets the objective without regressions.
+- [x] Ensure tests pass and the feature meets the objective without regressions.
