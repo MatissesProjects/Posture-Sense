@@ -2,6 +2,8 @@ import cv2
 import sys
 import os
 import time
+import argparse
+import subprocess
 
 # Ensure the 'src' directory is in the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
@@ -13,10 +15,11 @@ except ImportError as e:
     sys.exit(1)
 
 class RunnerUI:
-    def __init__(self):
+    def __init__(self, start_widget=False):
         self.worker = CVWorker(callback=self.on_frame)
         self.last_data = None
         self.last_frame = None
+        self.start_widget = start_widget
 
     def on_frame(self, data, frame):
         """ Callback from the worker thread. """
@@ -24,11 +27,15 @@ class RunnerUI:
         self.last_frame = frame
 
     def run(self):
-        print("--- Posture-Sense CV Engine Test ---")
+        print("--- Posture-Sense Engine ---")
         print("Controls:")
         print("  'q' : Quit")
         print("  'c' : Calibrate")
         print("  'm' : Toggle Mirror Mode")
+
+        if self.start_widget:
+            print("Launching Desktop Widget...")
+            subprocess.Popen([sys.executable, "src/system/widget.py"])
 
         if not self.worker.start():
             return
@@ -78,7 +85,7 @@ class RunnerUI:
             # Feedback Text
             cv2.putText(img, feedback, (20, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 255, 200), 1)
 
-            cv2.imshow("Posture-Sense CLI Runner", img)
+            cv2.imshow("Posture-Sense Engine", img)
             
             # Key Handling
             key = cv2.waitKey(1) & 0xFF
@@ -96,5 +103,13 @@ class RunnerUI:
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    ui = RunnerUI()
-    ui.run()
+    parser = argparse.ArgumentParser(description="Posture-Sense Runner")
+    parser.add_argument("--widget", action="store_true", help="Launch the desktop mini-widget")
+    parser.add_argument("--only-widget", action="store_true", help="ONLY launch the widget (expects API already running)")
+    args = parser.parse_args()
+
+    if args.only_widget:
+        subprocess.run([sys.executable, "src/system/widget.py"])
+    else:
+        ui = RunnerUI(start_widget=args.widget)
+        ui.run()
