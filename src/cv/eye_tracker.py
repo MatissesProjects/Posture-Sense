@@ -88,17 +88,15 @@ class EyeTracker:
 
     def get_blink_status(self):
         """
-        Detects if eyes are currently closed using EAR (Eye Aspect Ratio).
+        Detects if eyes are currently closed (blink) or narrowed (squint) using EAR.
         """
         if not self.results or not self.results.multi_face_landmarks:
-            return False
+            return {"is_blinking": False, "is_squinting": False, "ear": 0.3}
             
         face_lms = self.results.multi_face_landmarks[0].landmark
         
         def calculate_ear(top, bottom, left, right):
-            # Vertical distance
             v_dist = np.sqrt((top.x - bottom.x)**2 + (top.y - bottom.y)**2)
-            # Horizontal distance
             h_dist = np.sqrt((left.x - right.x)**2 + (left.y - right.y)**2)
             return v_dist / h_dist if h_dist != 0 else 0
 
@@ -108,9 +106,15 @@ class EyeTracker:
         r_ear = calculate_ear(face_lms[386], face_lms[374], face_lms[263], face_lms[362])
         
         avg_ear = (l_ear + r_ear) / 2
-        # Threshold for closed eye is usually < 0.2
-        # Cast to bool() to avoid numpy.bool_ (which is not JSON serializable)
-        return bool(avg_ear < 0.18)
+        
+        # EAR < 0.18: Closed (Blink)
+        # 0.18 < EAR < 0.23: Narrowed (Squint)
+        # EAR > 0.23: Open
+        return {
+            "is_blinking": bool(avg_ear < 0.18),
+            "is_squinting": bool(0.18 <= avg_ear < 0.23),
+            "ear": round(float(avg_ear), 3)
+        }
 
     def get_gaze_ratio(self, iris_data, img_w, img_h):
         """

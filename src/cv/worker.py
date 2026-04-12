@@ -79,9 +79,9 @@ class CVWorker:
         self.privacy_mode = not self.privacy_mode
         return self.privacy_mode
 
-    def calibrate(self):
+    def calibrate(self, context='neutral'):
         if self.last_result and self.last_result.get('pose'):
-            return self.pipeline.posture_analyzer.calibrate(self.last_result['pose'])
+            return self.pipeline.posture_analyzer.calibrate(self.last_result['pose'], context)
         return False
 
     def get_layout_info(self):
@@ -111,7 +111,17 @@ class CVWorker:
             if not success: time.sleep(0.1); continue
             if self.mirror_mode: frame = cv2.flip(frame, 1)
             
-            result = self.pipeline.process_frame(frame, self.static_duration)
+            # Calculate viewing angle from last frame or default
+            viewing_angle = 0
+            if self.last_result and 'ess' in self.last_result:
+                pose = self.last_result.get('pose')
+                if pose and 'nose' in pose:
+                    eye_y = pose['nose']['y'] * self.last_result['resolution']['height']
+                    target_y = self.last_result['ess']['target_y']
+                    dist = self.last_result['analysis'].get('distance_cm', 60)
+                    viewing_angle = self.pipeline.posture_analyzer.calculate_viewing_angle(eye_y, target_y, dist)
+
+            result = self.pipeline.process_frame(frame, self.static_duration, viewing_angle)
             result['workspace'] = self.get_layout_info()
             result['window'] = self.window_manager.get_active_window_info()
             

@@ -12,10 +12,14 @@ class CVPipeline:
         self.hand_tracker = HandTracker()
         self.posture_analyzer = PostureAnalyzer()
 
-    def process_frame(self, img, static_duration=0):
+    def process_frame(self, img, static_duration=0, viewing_angle=0):
         """Processes a single frame and returns all landmark data and analysis."""
         h, w, _ = img.shape
         
+        # Environmental Audit: Brightness
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        brightness = round(float(np.mean(gray)), 2)
+
         # Pose detection
         img = self.pose_detector.find_pose(img, draw=False)
         pose_lms = self.pose_detector.get_relevant_landmarks()
@@ -25,14 +29,14 @@ class CVPipeline:
         iris_lms = self.eye_tracker.get_iris_landmarks(w, h)
         gaze_ratio = self.eye_tracker.get_gaze_ratio(iris_lms, w, h)
         head_pose = self.eye_tracker.get_head_pose()
-        is_blinking = self.eye_tracker.get_blink_status()
+        eye_data = self.eye_tracker.get_blink_status()
 
         # Hand tracking (Track 011)
         self.hand_tracker.find_hands(img)
         hand_lms = self.hand_tracker.get_hand_landmarks(w, h)
         
         # Posture Analysis
-        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, hand_lms, static_duration)
+        analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, hand_lms, static_duration, viewing_angle, brightness, eye_data)
         
         data = {
             "pose": pose_lms,
@@ -40,7 +44,8 @@ class CVPipeline:
             "hands": hand_lms,
             "gaze_ratio": gaze_ratio,
             "head_pose": head_pose,
-            "is_blinking": is_blinking,
+            "eye_data": eye_data,
+            "brightness": brightness,
             "analysis": analysis,
             "resolution": {"width": w, "height": h}
         }

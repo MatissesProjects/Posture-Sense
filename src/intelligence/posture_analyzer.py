@@ -8,10 +8,15 @@ logger = logging.getLogger(__name__)
 
 class PostureAnalyzer:
     def __init__(self):
-        self.baseline = None  # Set during calibration
+        self.baselines = {}  # Map of context -> baseline (e.g. 'neutral', 'top', 'bottom')
+        self.active_context = 'neutral'
         self.is_standing = False
         self.rula_scorer = RULAScorer()
         self.reba_scorer = REBAScorer()
+        
+        # Temporal Smoothing
+        self.smoothed_lms = {}
+        self.EMA_ALPHA = 0.35 # Smoothing factor (lower = more smooth, but more lag)
         
         # Scoring weights (Now used as baseline for the hybrid model)
         self.weights = {
@@ -130,31 +135,72 @@ class PostureAnalyzer:
         
         return round(load_score, 1)
 
-    def calibrate(self, pose_data):
+    def calibrate(self, pose_data, context='neutral'):
         if not pose_data or "nose" not in pose_data or "left_shoulder" not in pose_data: return False
         nose, l_s, r_s = pose_data["nose"], pose_data["left_shoulder"], pose_data["right_shoulder"]
-        self.baseline = {
+        self.baselines[context] = {
             "nose_y": nose['y'],
             "shoulder_y": (l_s['y'] + r_s['y']) / 2,
             "shoulder_width": abs(l_s['x'] - r_s['x']),
             "landmarks": pose_data.copy()
         }
+        self.active_context = context
         return True
 
-    def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0):
+    def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0, viewing_angle=0, brightness=100, eye_data=None):
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
 
-        # 1. 3D Model Generation
+        # 0. Temporal Smoothing (EMA)
+        for name, lm in pose_data.items():
+            if name not in self.smoothed_lms:
+                self.smoothed_lms[name] = lm.copy()
+            else:
+                self.smoothed_lms[name]['x'] = self.EMA_ALPHA * lm['x'] + (1 - self.EMA_ALPHA) * self.smoothed_lms[name]['x']
+                self.smoothed_lms[name]['y'] = self.EMA_ALPHA * lm['y'] + (1 - self.EMA_ALPHA) * self.smoothed_lms[name]['y']
+                self.smoothed_lms[name]['z'] = self.EMA_ALPHA * lm['z'] + (1 - self.EMA_ALPHA) * self.smoothed_lms[name]['z']
+        
+        # Use smoothed landmarks for the rest of analysis
+        pose_data = self.smoothed_lms
+
+        # 1. Environmental Audit
+        is_squinting = eye_data.get('is_squinting', False) if eye_data else False
+        is_dim = brightness < 50
+        env_feedback = None
+        if is_squinting and is_dim:
+            env_feedback = "💡 Room is too dim. Squinting detected."
+
+        # 2. Angle Compensation (Track 015 Phase 3)
+        # Estimate webcam pitch by comparing neck-to-hip vector vs vertical
+        webcam_pitch_correction = 0
+        if "nose" in pose_data and "left_hip" in pose_data:
+            nose, l_h, r_h = pose_data["nose"], pose_data["left_hip"], pose_data["right_hip"]
+            mid_h_y = (l_h['y'] + r_h['y']) / 2
+            # If camera is tilted down, things at the bottom look "shorter" (closer to top)
+            # This is a heuristic: if user is standing but appears short, we adjust
+            if self.is_standing and (mid_h_y - nose['y']) < 0.3:
+                webcam_pitch_correction = 0.05 # Shift Y coordinates to compensate for look-up angle
+
+        # 3. Switch context based on gaze/viewing angle
+        if viewing_angle > 15 and 'top' in self.baselines:
+            self.active_context = 'top'
+        elif viewing_angle < -15 and 'bottom' in self.baselines:
+            self.active_context = 'bottom'
+        else:
+            self.active_context = 'neutral'
+
+        baseline = self.baselines.get(self.active_context, self.baselines.get('neutral'))
+
+        # 2. 3D Model Generation
         distance_cm = self.estimate_distance(iris_data) if iris_data else None
         physical_pose = self.normalize_to_physical(pose_data, distance_cm)
         com = self.calculate_com(physical_pose) if physical_pose else None
         spine = self.analyze_spine_kinematics(physical_pose) if physical_pose else None
 
-        # 2. Biomechanical Risk (Phase 4)
+        # 3. Biomechanical Risk (Phase 4)
         bio_score = self.calculate_biomechanical_risk(com, spine)
 
-        # 3. Traditional Metrics
+        # 4. Traditional Metrics
         l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
         shoulder_diff = abs(l_s['y'] - r_s['y'])
         shoulder_score = max(0, 100 - (shoulder_diff * 1000))
@@ -165,9 +211,11 @@ class PostureAnalyzer:
         neck_score = max(0, 100 - (neck_tilt_lat * 2000))
 
         slouch_score = 100
-        if self.baseline:
-            baseline_dist = self.baseline["shoulder_y"] - self.baseline["nose_y"]
-            dist_diff = max(0, baseline_dist - (mid_s_y - nose['y']))
+        if baseline:
+            # Apply correction to the current shoulder position before comparing to baseline
+            corrected_mid_s_y = mid_s_y + webcam_pitch_correction
+            baseline_dist = baseline["shoulder_y"] - baseline["nose_y"]
+            dist_diff = max(0, baseline_dist - (corrected_mid_s_y - nose['y']))
             slouch_score = max(0, 100 - (dist_diff * 1500))
 
         elbow_score = 100
@@ -181,19 +229,20 @@ class PostureAnalyzer:
             spine_score = max(0, 100 - (abs(mid_s_x - mid_h_x) * 1000))
 
         typing_score = self.calculate_typing_strain(pose_data, hand_data)
-        if self.baseline: self.is_standing = nose['y'] < self.baseline["nose_y"] - 0.08
+        if baseline: self.is_standing = nose['y'] < baseline["nose_y"] - 0.08
         else: self.is_standing = nose['y'] < 0.38
 
-        # 4. Standard Scores
+        # 5. Standard Scores
         rula = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
         reba = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
 
-        # 5. Hybrid Final Score (Prioritizing Biomechanics)
+        # 6. Hybrid Final Score (Prioritizing Biomechanics)
         total_score = (bio_score * 0.40 + slouch_score * 0.20 + neck_score * 0.15 + 
                        typing_score * 0.10 + shoulder_score * 0.10 + elbow_score * 0.05)
 
         return {
-            "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": self.baseline is not None,
+            "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": len(self.baselines) > 0,
+            "active_context": self.active_context,
             "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "spine": spine, "bio_score": bio_score,
             "typing_score": typing_score, "rula": rula, "reba": reba,
             "metrics": {
@@ -201,12 +250,13 @@ class PostureAnalyzer:
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None):
-        if total_score >= 90: return "✅ Excellent alignment."
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None):
+        if total_score >= 90 and not env: return "✅ Excellent alignment."
         items = []
+        if env: items.append(env)
         if slouch < 70: items.append("🪑 Slouching detected.")
         if neck < 70: items.append("🦒 Check neck tilt.")
         if shoulder < 70: items.append("⚖️ Level shoulders.")
