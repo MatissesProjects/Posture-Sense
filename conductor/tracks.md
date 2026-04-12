@@ -19,8 +19,8 @@ The project is divided into four main tracks to ensure focused development and r
 | **011** | [**Hand & Wrist Ergonomics**](./tracks/011-hand-wrist-ergonomics/index.md) | Monitoring typing strain, wrist deviation, and RSI risk factors. | *Completed* | [Plan](./tracks/011-hand-wrist-ergonomics/plan.md) |
 | **012** | [**Biomechanical Modeling**](./tracks/012-biomechanical-modeling/index.md) | 3D physical modeling, Center of Mass (CoM), and kinematic spine chain analysis. | *Completed* | [Plan](./tracks/012-biomechanical-modeling/plan.md) |
 | **013** | [**Predictive Fatigue**](./tracks/013-predictive-fatigue/index.md) | Machine learning models to forecast and prevent postural and eye fatigue. | *Completed* | [Plan](./tracks/013-predictive-fatigue/plan.md) |
-| **014** | [**Corporate Reporting**](./tracks/014-corporate-reporting/index.md) | High-fidelity analytics, strain heatmaps, and professional PDF reports. | *Not Started* | [Plan](./tracks/014-corporate-reporting/plan.md) |
-| **015** | [**Adaptive Calibration**](./tracks/015-adaptive-calibration/index.md) | Robustness to environment, lighting, and camera orientation changes. | *Not Started* | [Plan](./tracks/015-adaptive-calibration/plan.md) |
+| **014** | [**Corporate Reporting**](./tracks/014-corporate-reporting/index.md) | High-fidelity analytics, strain heatmaps, and professional PDF reports. | *Completed* | [Plan](./tracks/014-corporate-reporting/plan.md) |
+| **015** | [**Adaptive Calibration**](./tracks/015-adaptive-calibration/index.md) | Robustness to environment, lighting, and camera orientation changes. | *Completed* | [Plan](./tracks/015-adaptive-calibration/plan.md) |
 
 
 ## Track Conventions
