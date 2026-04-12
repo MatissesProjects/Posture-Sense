@@ -27,6 +27,15 @@ The project is divided into four main tracks to ensure focused development and r
 | **019** | [**Predictive Transitioning**](./tracks/019-predictive-transitioning/index.md) | Proactive sit/stand recommendations based on longitudinal fatigue models. | *Completed* | [Plan](./tracks/019-predictive-transitioning/plan.md) |
 | **020** | [**Spatial Corrections**](./tracks/020-spatial-corrections/index.md) | Asymmetrical load tracking and directional spatial audio nudges. | *Completed* | [Plan](./tracks/020-spatial-corrections/plan.md) |
 | **021** | [**Respiration & Stress**](./tracks/021-respiration-stress/index.md) | Estimating breathing rate via chest/shoulder kinematics for stress alerts. | *Completed* | [Plan](./tracks/021-respiration-stress/plan.md) |
+| **022** | [**Auto-Window Aligner**](./tracks/022-auto-window-aligner/index.md) | Implement logic to physically move the active window to the calculated Ergonomic Sweet Spot based on webcam eye level. | *Planned* | [Plan](./tracks/022-auto-window-aligner/plan.md) |
+| **023** | [**Multi-Monitor Calibration**](./tracks/023-multi-monitor-calibration/index.md) | Create a UI flow to calibrate for Top, Neutral, and Bottom gaze points for stacked monitors. | *Planned* | [Plan](./tracks/023-multi-monitor-calibration/plan.md) |
+| **024** | [**Gaze Distribution Analytics**](./tracks/024-gaze-distribution/index.md) | Track and report the percentage of time spent looking at top vs. bottom monitors, warning for Neck Extension Strain. | *Planned* | [Plan](./tracks/024-gaze-distribution/plan.md) |
+| **025** | [**Desktop Mini-Widget**](./tracks/025-desktop-mini-widget/index.md) | A transparent, always-on-top overlay showing current score and posture alerts without needing a browser. | *Planned* | [Plan](./tracks/025-desktop-mini-widget/plan.md) |
+| **026** | [**Meeting Mode**](./tracks/026-meeting-mode/index.md) | Automatically detect video calls and suppress intrusive overlays in favor of subtle visual cues. | *Planned* | [Plan](./tracks/026-meeting-mode/plan.md) |
+| **027** | [**Voice Control Integration**](./tracks/027-voice-ui/index.md) | Add voice commands like 'Calibrate' or 'Status report' for hands-free interaction. | *Planned* | [Plan](./tracks/027-voice-ui/plan.md) |
+| **028** | [**3D Biomechanical Simulation**](./tracks/028-3d-biomechanical-sim/index.md) | Enhance WorkstationVisualizer to show a 3D avatar with a heatmap of spinal stress (estimating Newtons of force). | *Planned* | [Plan](./tracks/028-3d-biomechanical-sim/plan.md) |
+| **029** | [**Personalized Fatigue Learning**](./tracks/029-personalized-fatigue/index.md) | Replace generic ML model with one that learns specific postural decay patterns over time. | *Planned* | [Plan](./tracks/029-personalized-fatigue/plan.md) |
+| **030** | [**Comprehensive Test Suite**](./tracks/030-comprehensive-testing/index.md) | Address the 19% test coverage gap by writing extensive unit and integration tests for core logic. | *Planned* | [Plan](./tracks/030-comprehensive-testing/plan.md) |
 
 
 ## Track Conventions
