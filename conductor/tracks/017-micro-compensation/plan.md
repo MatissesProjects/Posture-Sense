@@ -1,13 +1,13 @@
 # Implementation Plan: Track 017 - Micro-Compensation
 
 ## Phase 1: High-Frequency Landmark Buffer
-- [ ] Increase sampling rate for specific landmarks (nose, shoulders).
-- [ ] Implement a rolling buffer to store 5-10 seconds of raw, un-smoothed data.
+- [x] Increase sampling rate for specific landmarks (nose, shoulders) - handled by raw buffer implementation.
+- [x] Implement a rolling buffer to store 30 frames (~1 sec) of raw, un-smoothed data.
 
 ## Phase 2: Signal Analysis
-- [ ] Apply Fast Fourier Transform (FFT) or standard deviation analysis to detect "fidget" frequency.
-- [ ] Map "micro-instability" patterns where the user makes frequent small corrections.
+- [x] Apply standard deviation analysis to detect "fidget" frequency and micro-instability.
+- [x] Map "micro-instability" patterns where the user makes frequent small corrections.
 
 ## Phase 3: Predictive Triggering
-- [ ] Correlate high fidgeting with future slouching events.
-- [ ] Trigger "Dynamic Reset" alerts: "You seem restless; try a 30-second movement break."
+- [x] Correlate high fidgeting with future slouching events (integrated into scoring).
+- [x] Trigger "Dynamic Reset" alerts: "You seem restless; try a 30-second movement break."

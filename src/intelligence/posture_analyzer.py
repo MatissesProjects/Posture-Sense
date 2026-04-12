@@ -18,6 +18,11 @@ class PostureAnalyzer:
         self.smoothed_lms = {}
         self.EMA_ALPHA = 0.35 # Smoothing factor (lower = more smooth, but more lag)
         
+        # Track 017: Micro-Compensation / Fidget Buffer
+        # Stores last 30 frames of RAW (un-smoothed) landmarks
+        self.raw_buffer = []
+        self.BUFFER_SIZE = 30
+        
         # Scoring weights (Now used as baseline for the hybrid model)
         self.weights = {
             "shoulder_level": 0.15,
@@ -186,9 +191,40 @@ class PostureAnalyzer:
         
         return round(angle_deg, 1)
 
+    def calculate_fidget_score(self):
+        """
+        Analyzes the raw buffer for micro-instability (high-frequency jitter).
+        Returns a score from 0-100 (100 = very stable, 0 = high fidgeting).
+        """
+        if len(self.raw_buffer) < self.BUFFER_SIZE: return 100.0
+        
+        # Analyze specific stable points: Nose and Shoulders
+        instability = 0
+        for name in ['nose', 'left_shoulder', 'right_shoulder']:
+            pts = [b[name] for b in self.raw_buffer if name in b]
+            if len(pts) < 10: continue
+            
+            # Standard deviation of movement over the buffer
+            std_x = np.std([p['x'] for p in pts])
+            std_y = np.std([p['y'] for p in pts])
+            
+            # Weighted instability (higher movement = higher instability)
+            instability += (std_x + std_y) * 1000 
+            
+        # Normalize: average across 3 points, threshold at ~15 units for "high fidget"
+        avg_instability = instability / 3
+        fidget_score = max(0, 100 - (avg_instability * 5))
+        
+        return round(fidget_score, 2)
+
     def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0, viewing_angle=0, brightness=100, eye_data=None):
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
+
+        # Track 017: Micro-Compensation (Pre-smoothing)
+        self.raw_buffer.append(pose_data.copy())
+        if len(self.raw_buffer) > self.BUFFER_SIZE: self.raw_buffer.pop(0)
+        fidget_score = self.calculate_fidget_score()
 
         # 0. Temporal Smoothing (EMA)
         for name, lm in pose_data.items():
@@ -294,11 +330,12 @@ class PostureAnalyzer:
         rula = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
         reba = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
 
-        # 6. Hybrid Final Score (Prioritizing Biomechanics & Clinical Metrics)
-        # CVA and Protraction are critical clinical indicators
+        # 6. Hybrid Final Score (Prioritizing Biomechanics, Clinical Metrics & Stability)
+        # Fidget score acts as a secondary penalty for fatigue instability
         total_score = (bio_score * 0.35 + cva_score * 0.15 + protraction_score * 0.10 + 
-                       slouch_score * 0.15 + neck_score * 0.10 + 
-                       typing_score * 0.05 + shoulder_score * 0.05 + elbow_score * 0.05)
+                       slouch_score * 0.10 + neck_score * 0.10 + 
+                       fidget_score * 0.10 + # Fatigue stability
+                       typing_score * 0.05 + shoulder_score * 0.05)
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": len(self.baselines) > 0,
@@ -309,15 +346,17 @@ class PostureAnalyzer:
                 "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score,
-                "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2)
+                "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2),
+                "fidget_score": fidget_score
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100):
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100, fidget=100):
         if total_score >= 90 and not env: return "✅ Excellent alignment."
         items = []
         if env: items.append(env)
+        if fidget < 75: items.append("📉 Fatigue alert: High micro-movement/restlessness.")
         if cva < 70: items.append("🐢 Forward head posture.")
         if protraction < 70: items.append("🏹 Shoulders rounded forward.")
         if slouch < 70: items.append("🪑 Slouching detected.")
