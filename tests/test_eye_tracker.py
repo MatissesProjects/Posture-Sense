@@ -48,7 +48,7 @@ class TestEyeTracker(unittest.TestCase):
         """Tests that get_gaze_ratio returns None if landmarks are missing."""
         tracker = EyeTracker()
         iris_data = {"left": [], "right": []}
-        self.assertIsNone(tracker.get_gaze_ratio(iris_data))
+        self.assertIsNone(tracker.get_gaze_ratio(iris_data, 640, 480))
 
 if __name__ == "__main__":
     unittest.main()

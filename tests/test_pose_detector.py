@@ -66,9 +66,9 @@ class TestPoseDetector(unittest.TestCase):
         detector.find_pose(img, draw=False)
         
         relevant_lms = detector.get_relevant_landmarks()
-        # Should be 11 landmarks in a dictionary
+        # Should be 13 landmarks in a dictionary (added ears in Track 016)
         self.assertIsInstance(relevant_lms, dict)
-        self.assertEqual(len(relevant_lms), 11)
+        self.assertEqual(len(relevant_lms), 13)
         self.assertIn("left_shoulder", relevant_lms)
         self.assertIn("right_hip", relevant_lms)
 

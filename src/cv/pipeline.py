@@ -1,5 +1,6 @@
 import cv2
 import json
+import numpy as np
 from src.cv.pose_detector import PoseDetector
 from src.cv.eye_tracker import EyeTracker
 from src.cv.hand_tracker import HandTracker

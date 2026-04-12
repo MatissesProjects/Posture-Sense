@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from src.cv.worker import CVWorker
 from src.intelligence.report_generator import ReportGenerator
 from fastapi.responses import FileResponse
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

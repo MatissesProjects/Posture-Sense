@@ -122,7 +122,7 @@ class EyeTracker:
         combining iris position and head tilt (pitch).
         """
         if not self.results or not self.results.multi_face_landmarks:
-            return {"x": 0.5, "y": 0.5, "head_pitch": 0}
+            return None
             
         face_lms = self.results.multi_face_landmarks[0].landmark
         

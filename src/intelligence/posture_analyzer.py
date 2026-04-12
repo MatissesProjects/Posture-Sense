@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+import time
 from src.intelligence.rula_scorer import RULAScorer
 from src.intelligence.reba_scorer import REBAScorer
 
@@ -414,7 +415,8 @@ class PostureAnalyzer:
             "distance_cm": distance_cm, "physical_pose": physical_pose, "com": com, "spine": spine, "bio_score": bio_score,
             "typing_score": typing_score, "rula": rula, "reba": reba,
             "metrics": {
-                "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
+                "shoulder_diff": round(shoulder_diff, 4), "shoulder_score": round(shoulder_score, 2),
+                "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score,
                 "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2),
