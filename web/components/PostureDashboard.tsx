@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
-import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard } from 'lucide-react';
+import FatigueForecast from './FatigueForecast';
+import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
@@ -12,7 +13,6 @@ export default function PostureDashboard() {
   const [privacyActive, setPrivacyActive] = useState(false);
   const lastNudgeRef = useRef<string | null>(null);
 
-  // Guided Stretch State
   const [activeStretch, setActiveStretch] = useState<string | null>(null);
   const [stretchTimer, setStretchTimer] = useState(0);
 
@@ -30,11 +30,7 @@ export default function PostureDashboard() {
   };
 
   const handleToggleMirror = async () => {
-    try {
-      await fetch('http://127.0.0.1:8000/api/toggle-mirror', { method: 'POST' });
-    } catch (err) {
-      console.error('Toggle mirror failed', err);
-    }
+    try { await fetch('http://127.0.0.1:8000/api/toggle-mirror', { method: 'POST' }); } catch (err) {}
   };
 
   const handleTogglePrivacy = async () => {
@@ -42,16 +38,13 @@ export default function PostureDashboard() {
       const res = await fetch('http://127.0.0.1:8000/api/toggle-privacy', { method: 'POST' });
       const result = await res.json();
       setPrivacyActive(result.privacy_mode);
-    } catch (err) {
-      console.error('Toggle privacy failed', err);
-    }
+    } catch (err) {}
   };
 
-  // Extract analysis data
   const analysis = data?.analysis || {};
   const score = analysis.score || 0;
   const feedback = analysis.feedback || "Initializing...";
-  const placementSuggestion = analysis.placement_suggestion || "Analyzing window placement...";
+  const placementSuggestion = analysis.placement_suggestion || "Analyzing...";
   const isStanding = analysis.is_standing || false;
   const calibrated = analysis.calibrated || false;
   const distance = analysis.distance_cm || 0;
@@ -62,7 +55,7 @@ export default function PostureDashboard() {
   const blinkRate = analysis.blink_rate || 0;
   const sessionDuration = analysis.session_duration || 0;
   const eyeStrainWarning = analysis.eye_strain_warning || null;
-  const stats = analysis.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0 };
+  const stats = analysis.stats || { streak: 0, today_avg_score: 0, today_ergonomic_minutes: 0, total_ergonomic_minutes: 0, fatigue_prediction: null };
 
   // Sound and Title Alerts
   useEffect(() => {
@@ -93,14 +86,10 @@ export default function PostureDashboard() {
         document.title = isAlert ? "⚠️ ALERT!" : originalTitle;
         isAlert = !isAlert;
       }, 1000);
-      return () => {
-        clearInterval(interval);
-        document.title = originalTitle;
-      };
+      return () => { clearInterval(interval); document.title = originalTitle; };
     }
   }, [nudge, soundEnabled]);
 
-  // Guided Stretch Timer
   useEffect(() => {
     if (stretchType && !activeStretch) {
       setActiveStretch(stretchType);
@@ -125,7 +114,6 @@ export default function PostureDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-      
       {activeStretch && (
         <div className="fixed inset-0 z-[100] bg-indigo-900/95 flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
           <div className="bg-slate-900 p-12 rounded-[3rem] border-4 border-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.5)] max-w-2xl w-full">
@@ -144,9 +132,7 @@ export default function PostureDashboard() {
                 ? "Standing Backbend: Place hands on hips and lean back slightly to reset your spine."
                 : "Take a deep breath and realign your spine."}
             </div>
-            <div className="text-8xl font-black text-white tabular-nums">
-              {stretchTimer}s
-            </div>
+            <div className="text-8xl font-black text-white tabular-nums">{stretchTimer}s</div>
             <button onClick={() => setActiveStretch(null)} className="mt-10 text-slate-500 hover:text-white transition-colors uppercase text-sm font-bold tracking-widest">
               Skip Break
             </button>
@@ -156,8 +142,7 @@ export default function PostureDashboard() {
 
       {nudge && !activeStretch && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-rose-600 text-white p-4 text-center font-bold text-xl animate-bounce shadow-2xl flex items-center justify-center gap-4">
-          <AlertCircle className="w-8 h-8" />
-          {nudge}
+          <AlertCircle className="w-8 h-8" /> {nudge}
         </div>
       )}
 
@@ -225,6 +210,22 @@ export default function PostureDashboard() {
             <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blinks" value={`${blinkRate}/m`} />
             <MetricCard icon={<Settings className="text-slate-400" />} label="Session" value={formatTime(sessionDuration)} />
             <MetricCard icon={<Settings className="text-purple-400" />} label="Status" value={calibrated ? "Cal" : "Raw"} />
+          </div>
+
+          {/* Track 013: AI Coaching Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FatigueForecast prediction={stats.fatigue_prediction} />
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col justify-center">
+              <div className="flex items-center gap-3 mb-2">
+                <BrainCircuit className="w-5 h-5 text-purple-400" />
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Session Insights</h3>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed italic">
+                {sessionDuration < 60 ? "Establishing session baseline..." : 
+                 score > 85 ? "Excellent focus! Your mechanical load is minimal right now." : 
+                 "Fatigue creeping in. You tend to slump more after looking at the top monitor."}
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

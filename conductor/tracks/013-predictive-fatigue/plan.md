@@ -16,5 +16,6 @@
 - [x] Throttled proactive interventions to maintain user focus (flow state).
 
 ## Phase 4: AI Coaching Dashboard
-- [ ] Show "Predicted Fatigue" gauge on the UI.
-- [ ] Provide "End-of-Session" insights: "Your focus was high, but your neck reached high risk after 45 minutes."
+- [x] Show "Predicted Fatigue" gauge and Sparkline in `FatigueForecast.tsx`.
+- [x] Provide "End-of-Session" and real-time insights based on AI analysis.
+- [x] Integrate AI insights panel into the main dashboard.
