@@ -5,6 +5,7 @@ import logging
 
 from src.intelligence.database_manager import DatabaseManager
 from src.intelligence.fatigue_predictor import FatiguePredictor
+from src.intelligence.transition_predictor import TransitionPredictor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ class StatsManager:
     def __init__(self):
         self.db_manager = DatabaseManager()
         self.fatigue_predictor = FatiguePredictor()
+        self.transition_predictor = TransitionPredictor()
         self.last_train_time = 0
         self.stats = {
             "daily_history": {}, 
@@ -50,6 +52,7 @@ class StatsManager:
         
         # Log to Database
         self.db_manager.log_metrics(analysis_data)
+        self.transition_predictor.update(analysis_data.get('is_standing', False), score)
         
         if today not in self.stats["daily_history"]:
             self.stats["daily_history"][today] = {"total_score": 0, "entries": 0, "ergonomic_minutes": 0}
@@ -145,5 +148,7 @@ return {
             "avg_60m": round(avg_60m, 1),
             "today_ergonomic_minutes": day_data["ergonomic_minutes"],
             "total_ergonomic_minutes": self.stats["total_ergonomic_minutes"],
-            "fatigue_prediction": fatigue_prediction
+            "fatigue_prediction": fatigue_prediction,
+            "transition_data": self.transition_predictor.get_predictions(),
+            "recovery_boost": self.transition_predictor.calculate_recovery_boost()
         }
