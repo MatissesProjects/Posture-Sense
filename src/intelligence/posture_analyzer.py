@@ -20,7 +20,6 @@ class PostureAnalyzer:
         self.EMA_ALPHA = 0.35 # Smoothing factor (lower = more smooth, but more lag)
         
         # Track 017: Micro-Compensation / Fidget Buffer
-        # Stores last 30 frames of RAW (un-smoothed) landmarks
         self.raw_buffer = []
         self.BUFFER_SIZE = 30
         
@@ -32,7 +31,7 @@ class PostureAnalyzer:
         
         # Dynamic Camera Pitch (Auto-Leveling)
         self.camera_pitch_offset = 0
-        self.pitch_ema_alpha = 0.05 # Slow adjustment to physical movement
+        self.pitch_ema_alpha = 0.05 
 
         # Scoring weights
         self.weights = {
@@ -65,10 +64,6 @@ class PostureAnalyzer:
         return round(distance_cm, 1)
 
     def calculate_viewing_angle(self, eye_y_px, gaze_y_px, distance_cm):
-        """
-        Calculates vertical viewing angle based on pixel positions and distance.
-        Assumes ~35 pixels per cm for coordinate conversion.
-        """
         if distance_cm <= 0: return 0
         y_diff_px = gaze_y_px - eye_y_px
         y_diff_cm = y_diff_px / 35.0 # Conversion factor
@@ -133,7 +128,26 @@ class PostureAnalyzer:
         neck_flexion = angle_with_vertical(cervical_vec)
         trunk_flexion = angle_with_vertical(torso_vec)
         slump_depth = mid_s[2] - mid_h[2]
-        return {"neck_flexion": round(float(neck_flexion), 1), "trunk_flexion": round(float(trunk_flexion), 1), "slump_depth_cm": round(float(slump_depth), 2), "is_slumping": slump_depth > 5.0}
+        
+        # --- Track 028: Vertebral Load Estimates ---
+        # Estimates based on gravitational moment arms
+        head_mass = 5.0 # kg
+        moment_arm_cm = abs(physical_pose["nose"]["z"] - mid_s[2])
+        c7_torque = head_mass * 9.81 * (moment_arm_cm / 100.0) # Newton-meters
+        
+        spinal_heatmap = {
+            "C7": min(1.0, c7_torque / 5.0), # Normalizing: 5Nm is heavy strain
+            "T4": min(1.0, (trunk_flexion / 45.0)),
+            "L5": min(1.0, (slump_depth / 10.0))
+        }
+
+        return {
+            "neck_flexion": round(float(neck_flexion), 1), 
+            "trunk_flexion": round(float(trunk_flexion), 1), 
+            "slump_depth_cm": round(float(slump_depth), 2), 
+            "is_slumping": slump_depth > 5.0,
+            "spinal_heatmap": spinal_heatmap
+        }
 
     def calculate_biomechanical_risk(self, com, spine):
         if not com or not spine: return 100
@@ -201,17 +215,15 @@ class PostureAnalyzer:
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
 
-        # 0. Self-Leveling Camera (Adjust pitch physically)
+        # Dynamic Camera Pitch
         if "nose" in pose_data and "left_shoulder" in pose_data:
             l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
             current_pitch = (pose_data["nose"]['y'] - (l_s['y'] + r_s['y'])/2)
-            # EMA adjust to physical camera movement
             self.camera_pitch_offset = (self.pitch_ema_alpha * current_pitch) + (1 - self.pitch_ema_alpha) * self.camera_pitch_offset
 
         self.raw_buffer.append(pose_data.copy())
         if len(self.raw_buffer) > self.BUFFER_SIZE: self.raw_buffer.pop(0)
         distance_cm = self.estimate_distance(iris_data)
-        # Use 60cm as default if distance cannot be estimated
         safe_distance = distance_cm if distance_cm is not None else 60.0
         
         fidget_score = self.calculate_fidget_score(safe_distance)
@@ -249,7 +261,7 @@ class PostureAnalyzer:
         else: self.active_context = 'neutral'
         baseline = self.baselines.get(self.active_context, self.baselines.get('neutral'))
 
-        physical_pose = self.normalize_to_physical(pose_data, distance_cm)
+        physical_pose = self.normalize_to_physical(pose_data, safe_distance)
         com, spine = self.calculate_com(physical_pose), self.analyze_spine_kinematics(physical_pose)
         bio_score = self.calculate_biomechanical_risk(com, spine)
 
@@ -274,18 +286,10 @@ class PostureAnalyzer:
             dist_diff = max(0, (baseline["shoulder_y"] - baseline["nose_y"]) - (mid_s_y + webcam_pitch_correction - nose['y']))
             slouch_score = max(0, 100 - (dist_diff * 1500))
 
-        elbow_score = 100
-        if "left_elbow" in pose_data and "left_wrist" in pose_data:
-            elbow_score = max(0, 100 - (abs(self.calculate_angle(l_s, pose_data["left_elbow"], pose_data["left_wrist"]) - 105) * 2))
-
-        lateral_lean = self.calculate_lateral_lean(pose_data)
-        lateral_lean_score = max(0, 100 - (abs(lateral_lean) * 1000))
-        spine_score = 100
-        if "left_hip" in pose_data:
-            spine_score = max(0, 100 - (abs(mid_s_x - (pose_data["left_hip"]['x'] + pose_data["right_hip"]['x'])/2) * 1000))
-
         typing_score = self.calculate_typing_strain(pose_data, hand_data)
         self.is_standing = nose['y'] < (baseline["nose_y"] - 0.08 if baseline else 0.38)
+
+        lateral_lean_score = max(0, 100 - (abs(self.calculate_lateral_lean(pose_data)) * 1000))
 
         total_score = (bio_score * 0.30 + cva_score * 0.15 + protraction_score * 0.10 + lateral_lean_score * 0.10 + 
                        slouch_score * 0.10 + neck_score * 0.10 + fidget_score * 0.05 + typing_score * 0.05 + shoulder_score * 0.05)
@@ -293,13 +297,13 @@ class PostureAnalyzer:
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": len(self.baselines) > 0,
             "active_context": self.active_context, "distance_cm": distance_cm, "bio_score": bio_score,
+            "spinal_heatmap": spine["spinal_heatmap"] if spine else None,
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4), "shoulder_score": round(shoulder_score, 2),
                 "neck_tilt_lat": round(neck_tilt_lat, 4), "slouch_score": round(slouch_score, 2),
-                "elbow_score": round(elbow_score, 2), "spine_score": round(spine_score, 2),
                 "typing_score": typing_score, "cva": cva_deg, "cva_score": round(cva_score, 2),
                 "protraction_score": round(protraction_score, 2), "fidget_score": fidget_score,
-                "lateral_lean": lateral_lean, "lateral_lean_score": lateral_lean_score, "respiration_rate": self.last_resp_rate
+                "lateral_lean": self.calculate_lateral_lean(pose_data), "lateral_lean_score": lateral_lean_score, "respiration_rate": self.last_resp_rate
             },
             "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score, lateral_lean_score, stress_feedback)
         }
@@ -319,14 +323,3 @@ class PostureAnalyzer:
         if typing < 75: items.append("⌨️ Typing strain.")
         if spine and spine.get("is_slumping"): items.append("📉 Spine load: Leaning forward.")
         return " | ".join(items) if items else "👍 Good posture."
-
-if __name__ == "__main__":
-    analyzer = PostureAnalyzer()
-    mock_pose = {"nose": {"x": 0.5, "y": 0.3, "z": 0}, 
-                 "left_eye": {"x": 0.48, "y": 0.28, "z": 0}, "right_eye": {"x": 0.52, "y": 0.28, "z": 0},
-                 "left_ear": {"x": 0.45, "y": 0.3, "z": 0}, "right_ear": {"x": 0.55, "y": 0.3, "z": 0},
-                 "left_shoulder": {"x": 0.4, "y": 0.4, "z": 0}, "right_shoulder": {"x": 0.6, "y": 0.4, "z": 0},
-                 "left_elbow": {"x": 0.35, "y": 0.55, "z": 0}, "left_wrist": {"x": 0.4, "y": 0.6, "z": 0}, 
-                 "left_hip": {"x": 0.42, "y": 0.7, "z": 0}, "right_hip": {"x": 0.58, "y": 0.7, "z": 0}}
-    analyzer.calibrate(mock_pose)
-    print(analyzer.analyze(mock_pose))

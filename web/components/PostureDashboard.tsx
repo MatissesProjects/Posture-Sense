@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
 import FatigueForecast from './FatigueForecast';
+import BiomechanicalAvatar from './BiomechanicalAvatar';
 import Link from 'next/link';
 import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3, Compass, Thermometer, Wind } from 'lucide-react';
 
@@ -262,26 +263,26 @@ export default function PostureDashboard() {
 
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm relative group">
               <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Live Tracker</h3>
               {privacyActive ? (
-                <div className="w-full aspect-video bg-slate-950 rounded-xl flex flex-col items-center justify-center border border-slate-800 text-slate-500 gap-4">
+                <div className="w-full aspect-square bg-slate-950 rounded-xl flex flex-col items-center justify-center border border-slate-800 text-slate-500 gap-4">
                   <ShieldOff className="w-16 h-16 opacity-20" />
-                  <p className="font-bold uppercase tracking-widest text-xs">Camera Access Blocked</p>
+                  <p className="font-bold uppercase tracking-widest text-xs">Blocked</p>
                 </div>
               ) : (
                 <PostureCanvas onData={setData} />
               )}
-              {!privacyActive && (
-                <div className="absolute bottom-8 right-8 bg-slate-900/90 p-3 rounded-full border border-slate-700 shadow-2xl transition-all group-hover:scale-110">
-                  <PostureAvatar score={score} />
-                </div>
-              )}
+            </div>
+
+            <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col h-[300px]">
+              <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Spinal Stress (3D)</h3>
+              <BiomechanicalAvatar pose={data?.pose} heatmap={data?.spinal_heatmap} />
             </div>
 
             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col">
-              <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Workspace Geometry</h3>
+              <h3 className="text-sm font-semibold text-slate-500 mb-2 uppercase tracking-wider">Workspace</h3>
               <WorkspaceVisualizer data={data} />
             </div>
           </div>

@@ -100,13 +100,21 @@ class TestPostureAnalyzer(unittest.TestCase):
         dist = self.analyzer.estimate_distance(mock_iris)
         self.assertAlmostEqual(dist, 60.0, delta=1.0)
 
-    def test_viewing_angle(self):
+    def test_calculate_viewing_angle(self):
         """Tests viewing angle calculation."""
         # Eye at 500px, target at 700px, distance 40cm.
-        # y_diff = 200px. y_diff_cm = 200 / 35 = 5.71cm.
-        # tan(theta) = 5.71 / 40 = 0.142. theta = 8.1 degrees.
         angle = self.analyzer.calculate_viewing_angle(500, 700, 40)
         self.assertAlmostEqual(angle, 8.1, delta=0.5)
+
+    def test_spinal_heatmap(self):
+        """Tests that spinal heatmap values are present and valid."""
+        result = self.analyzer.analyze(self.perfect_pose)
+        self.assertIn("spinal_heatmap", result)
+        heatmap = result["spinal_heatmap"]
+        for vertebra in ["C7", "T4", "L5"]:
+            self.assertIn(vertebra, heatmap)
+            self.assertGreaterEqual(heatmap[vertebra], 0)
+            self.assertLessEqual(heatmap[vertebra], 1.0)
 
 
 if __name__ == "__main__":
