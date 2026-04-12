@@ -209,15 +209,18 @@ class PostureAnalyzer:
 
         self.raw_buffer.append(pose_data.copy())
         if len(self.raw_buffer) > self.BUFFER_SIZE: self.raw_buffer.pop(0)
-        distance_cm = self.estimate_distance(iris_data) if iris_data else 60
-        fidget_score = self.calculate_fidget_score(distance_cm)
+        distance_cm = self.estimate_distance(iris_data)
+        # Use 60cm as default if distance cannot be estimated
+        safe_distance = distance_cm if distance_cm is not None else 60.0
+        
+        fidget_score = self.calculate_fidget_score(safe_distance)
 
         if "left_shoulder" in pose_data:
             mid_s_y = (pose_data["left_shoulder"]['y'] + pose_data["right_shoulder"]['y']) / 2
             self.respiration_buffer.append(mid_s_y)
             if len(self.respiration_buffer) > self.RESP_BUFFER_SIZE: self.respiration_buffer.pop(0)
             if time.time() - self.last_resp_calc_time > 5:
-                self.last_resp_rate = self.calculate_respiration_rate(distance_cm)
+                self.last_resp_rate = self.calculate_respiration_rate(safe_distance)
                 self.last_resp_calc_time = time.time()
         
         is_screen_apnea = self.last_resp_rate > 0 and self.last_resp_rate < 8
