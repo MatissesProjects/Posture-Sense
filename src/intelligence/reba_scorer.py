@@ -33,7 +33,7 @@ class REBAScorer:
         pass
 
     def calculate_angle(self, a, b, c):
-        a, b, c = np.array([a['x'], a['y']]), np.array([b['x'], b['y']]), np.array([b['x'], b['y']])
+        a, b, c = np.array([a['x'], a['y']]), np.array([b['x'], b['y']]), np.array([c['x'], c['y']])
         radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
         angle = np.abs(radians * 180.0 / np.pi)
         return 360 - angle if angle > 180.0 else angle

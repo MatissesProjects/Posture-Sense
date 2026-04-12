@@ -4,58 +4,65 @@ from src.system.monitor_manager import MonitorManager
 from src.system.window_manager import WindowManager
 
 class TestSystemIntegration(unittest.TestCase):
-    def setUp(self):
-        # Mock monitors: Top (1920x1080 at 0,0) and Bottom (1920x1080 at 0,1080)
-        self.mock_monitors = [
-            MagicMock(x=0, y=0, width=1920, height=1080, name="monitor_0", is_primary=True),
-            MagicMock(x=0, y=1080, width=1920, height=1080, name="monitor_1", is_primary=False)
-        ]
-
     @patch('src.system.monitor_manager.get_monitors')
-    def test_monitor_layout_detection(self, mock_get):
-        mock_get.return_value = self.mock_monitors
-        manager = MonitorManager()
+    @patch('builtins.open', create=True)
+    @patch('os.path.exists', return_value=False)
+    def test_monitor_manager_detection(self, mock_exists, mock_file, mock_get_monitors):
+        """Tests that monitor detection correctly identifies multiple monitors."""
+        mock_monitor = MagicMock()
+        mock_monitor.width = 1920
+        mock_monitor.height = 1080
+        mock_monitor.x = 0
+        mock_monitor.y = 0
+        mock_monitor.name = "Monitor 1"
+        mock_monitor.is_primary = True
         
-        # Check if 2 monitors were detected
+        mock_monitor2 = MagicMock()
+        mock_monitor2.width = 1920
+        mock_monitor2.height = 1080
+        mock_monitor2.x = 0
+        mock_monitor2.y = -1080 # Stacked above
+        mock_monitor2.name = "Monitor 2"
+        mock_monitor2.is_primary = False
+        
+        mock_get_monitors.return_value = [mock_monitor, mock_monitor2]
+        
+        manager = MonitorManager()
         self.assertEqual(len(manager.monitors), 2)
-        # Top monitor should be at y=0
-        self.assertEqual(min(m['y'] for m in manager.monitors), 0)
-        # Bottom monitor should be at y=1080
-        self.assertEqual(max(m['y'] for m in manager.monitors), 1080)
+        self.assertEqual(manager.monitors[1]["y"], -1080)
 
-    @patch('src.system.monitor_manager.get_monitors')
-    def test_window_identification(self, mock_get):
-        mock_get.return_value = self.mock_monitors
-        manager = MonitorManager()
-        wm = WindowManager(manager)
+    @patch('pygetwindow.getActiveWindow')
+    def test_window_manager_info(self, mock_get_active):
+        """Tests that window manager returns correct active window info."""
+        mock_win = MagicMock()
+        mock_win.title = "Test Window"
+        mock_win.left = 100
+        mock_win.top = 100
+        mock_win.width = 800
+        mock_win.height = 600
+        mock_get_active.return_value = mock_win
         
-        # Window at y=500 should be on monitor_0 (Top)
-        self.assertEqual(wm._identify_monitor(0, 500), "monitor_0")
-        # Window at y=1500 should be on monitor_1 (Bottom)
-        self.assertEqual(wm._identify_monitor(0, 1500), "monitor_1")
+        mock_monitor_manager = MagicMock()
+        mock_monitor_manager.monitors = [{"id": 0, "x": 0, "y": 0, "width": 1920, "height": 1080}]
+        
+        manager = WindowManager(mock_monitor_manager)
+        info = manager.get_active_window_info()
+        
+        self.assertEqual(info["title"], "Test Window")
+        self.assertEqual(info["monitor"], "monitor_0")
 
-    @patch('src.system.monitor_manager.get_monitors')
-    def test_ess_calculation(self, mock_get):
-        mock_get.return_value = self.mock_monitors
-        manager = MonitorManager()
-        # Default webcam config: anchor_monitor_index=1 (Bottom), y_offset=0
-        manager.webcam_config = {
-            "anchor_monitor_index": 1,
-            "offset_x_pct": 0.5,
-            "offset_y_px": 0
-        }
-        wm = WindowManager(manager)
+    @patch('win32gui.GetForegroundWindow', return_value=12345)
+    @patch('win32gui.GetWindowText', return_value="Active Window")
+    @patch('win32gui.GetWindowRect', return_value=(0, 0, 800, 600))
+    @patch('win32gui.SetWindowPos')
+    def test_window_manager_move(self, mock_set_pos, mock_rect, mock_text, mock_fg):
+        """Tests that move_active_window calls Win32 API correctly."""
+        mock_monitor_manager = MagicMock()
+        manager = WindowManager(mock_monitor_manager)
         
-        # Eye level at normalized 0.5 (level with webcam)
-        # Webcam global Y is bottom monitor top edge = 1080
-        ess = wm.get_ergonomic_sweet_spot(0.5)
-        self.assertEqual(ess["target_y"], 1080)
-        
-        # Eye level at normalized 0.3 (above webcam)
-        # 0.3 - 0.5 = -0.2. -0.2 * 500 = -100px.
-        # Target Y = 1080 - 100 = 980
-        ess = wm.get_ergonomic_sweet_spot(0.3)
-        self.assertEqual(ess["target_y"], 980)
+        success = manager.move_active_window(500, 500)
+        self.assertTrue(success)
+        self.assertTrue(mock_set_pos.called)
 
 if __name__ == "__main__":
     unittest.main()

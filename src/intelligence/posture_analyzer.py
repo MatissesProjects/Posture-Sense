@@ -64,15 +64,16 @@ class PostureAnalyzer:
         distance_cm = (1.17 * focal_length) / dist_px
         return round(distance_cm, 1)
 
-    def calculate_viewing_angle(self, eye_y_cam_norm, gaze_y_work_norm, distance_cm):
+    def calculate_viewing_angle(self, eye_y_px, gaze_y_px, distance_cm):
         """
-        Calculates vertical viewing angle based on normalized eye position and gaze.
+        Calculates vertical viewing angle based on pixel positions and distance.
+        Assumes ~35 pixels per cm for coordinate conversion.
         """
-        workspace_height_cm = 60.0
-        # Assume eye is at webcam level (seam) per user configuration
-        y_diff_cm = (gaze_y_work_norm - 0.5) * workspace_height_cm
-        angle_rad = np.arctan2(y_diff_cm, distance_cm) if distance_cm > 0 else 0
-        return round(angle_rad * 180.0 / np.pi, 1)
+        if distance_cm <= 0: return 0
+        y_diff_px = gaze_y_px - eye_y_px
+        y_diff_cm = y_diff_px / 35.0 # Conversion factor
+        angle_rad = np.arctan2(y_diff_cm, distance_cm)
+        return round(float(angle_rad * 180.0 / np.pi), 1)
 
     def calculate_typing_strain(self, pose_data, hand_data=None):
         if hand_data and len(hand_data) > 0: return 90.0
