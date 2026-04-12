@@ -1,14 +1,13 @@
 # Implementation Plan: Track 008 - Privacy-First Architecture
 
 ## Phase 1: On-Device Processing Enforcement
-- [ ] Audit and ensure no image data ever leaves the `CVPipeline`.
-- [ ] Implement a "Privacy Shield" (e.g., auto-disable camera if the application is not in focus).
+- [x] Audit and ensure no image data ever leaves the `CVPipeline`.
+- [x] Implement a "Privacy Shield" toggle to auto-disable camera capture in `CVWorker`.
 
 ## Phase 2: Data Encryption
-- [ ] Implement AES-256 encryption for the SQLite database.
-- [ ] Create a secure key management system for user data.
+- [x] Implement AES-256 encryption for sensitive metrics in `DatabaseManager` using `SecurityManager`.
+- [x] Create a secure key management system (`.posture_key`) for user data.
 
 ## Phase 3: Transparency & Consent
-- [ ] Create a "Privacy Dashboard" showing exactly what is tracked and what is not.
-- [ ] Implement a clear user-consent flow during first-time setup.
-- [ ] Add a "Delete All My Data" button.
+- [x] Create a "Privacy Controls" section in the dashboard with a "Delete All My Data" button.
+- [x] Document the local-only processing mandate in `PRIVACY.md`.

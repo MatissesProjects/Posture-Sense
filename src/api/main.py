@@ -98,6 +98,13 @@ async def toggle_privacy():
         return {"privacy_mode": privacy_mode}
     return {"error": "Worker not initialized"}
 
+@app.delete("/api/delete-all-data")
+async def delete_all_data():
+    if cv_worker:
+        success = cv_worker.stats_manager.db_manager.delete_all_data()
+        return {"success": success}
+    return {"success": False, "error": "Worker not initialized"}
+
 @app.get("/api/history")
 async def get_history(limit: int = 100):
     if cv_worker:

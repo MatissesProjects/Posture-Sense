@@ -287,6 +287,27 @@ export default function PostureDashboard() {
           </div>
 
           <PostureTrends />
+
+          {/* Track 008: Privacy Settings */}
+          <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
+            <h3 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider flex items-center gap-2">
+              <Shield className="w-4 h-4" /> Privacy Controls
+            </h3>
+            <button 
+              onClick={async () => {
+                if (confirm("Are you sure? This will permanently delete all your posture history.")) {
+                  const res = await fetch('http://127.0.0.1:8000/api/delete-all-data', { method: 'DELETE' });
+                  if ((await res.json()).success) alert("All data deleted.");
+                }
+              }}
+              className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-lg border border-rose-500/20 transition-all"
+            >
+              Delete All My Data
+            </button>
+            <p className="mt-4 text-[10px] text-slate-600 text-center leading-relaxed">
+              All processing is local. View our <a href="#" className="underline">Privacy Policy</a>.
+            </p>
+          </div>
         </div>
       </main>
     </div>
