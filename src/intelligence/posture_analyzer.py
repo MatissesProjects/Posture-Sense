@@ -147,6 +147,45 @@ class PostureAnalyzer:
         self.active_context = context
         return True
 
+    def calculate_cva(self, pose_data):
+        """
+        Calculates the Craniovertebral Angle (CVA).
+        Gold standard for Forward Head Posture (FHP).
+        Angle between the horizontal plane through C7 and line from C7 to Tragus.
+        """
+        if "nose" not in pose_data or "left_shoulder" not in pose_data: return 60.0
+        
+        # 1. Approximate C7 (Midpoint of shoulders)
+        l_s, r_s = pose_data["left_shoulder"], pose_data["right_shoulder"]
+        c7 = {"x": (l_s['x'] + r_s['x']) / 2, "y": (l_s['y'] + r_s['y']) / 2}
+        
+        # 2. Approximate Tragus (Using eye/ear midpoint if ear not reliable)
+        # PoseDetector doesn't expose ears by default, using ear landmarks (7, 8) if available
+        # or nose if not. Let's check PoseDetector IDs.
+        ear_l = pose_data.get("left_ear")
+        ear_r = pose_data.get("right_ear")
+        
+        if not ear_l: # Fallback to ear approximation from PoseDetector landmarks
+             return 60.0 # Default safe angle if landmarks missing
+             
+        tragus = {"x": (ear_l['x'] + ear_r['x']) / 2, "y": (ear_l['y'] + ear_r['y']) / 2}
+        
+        # 3. Calculate angle relative to horizontal
+        # Horizontal vector from C7: (1, 0)
+        # Vector from C7 to Tragus: (tragus.x - c7.x, tragus.y - c7.y)
+        # We want the angle between the vertical and the neck, then subtract from 90?
+        # Standard CVA: angle between horizontal through C7 and line to tragus.
+        
+        dy = c7['y'] - tragus['y'] # Y is inverted in CV
+        dx = abs(tragus['x'] - c7['x']) # Should be close to 0 if centered
+        
+        # Using 3D physical landmarks for better accuracy
+        # But for now, simple 2D calculation on normalized plane
+        angle_rad = np.arctan2(dy, dx) if dx != 0 else np.pi/2
+        angle_deg = angle_rad * 180.0 / np.pi
+        
+        return round(angle_deg, 1)
+
     def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0, viewing_angle=0, brightness=100, eye_data=None):
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
@@ -205,6 +244,25 @@ class PostureAnalyzer:
         shoulder_diff = abs(l_s['y'] - r_s['y'])
         shoulder_score = max(0, 100 - (shoulder_diff * 1000))
 
+        # Track 016 Phase 1: CVA
+        cva_deg = self.calculate_cva(pose_data)
+        cva_score = max(0, 100 - (max(0, 55 - cva_deg) * 4)) # Significant FHP if < 50-55 deg
+
+        # Track 016 Phase 2: Protraction
+        # Horizontal offset from ear to shoulder plane
+        protraction_score = 100
+        if "left_ear" in pose_data:
+            mid_ear_x = (pose_data["left_ear"]['x'] + pose_data["right_ear"]['x']) / 2
+            mid_shoulder_x = (l_s['x'] + r_s['x']) / 2
+            # dx is depth offset in 2D projection (since user is side-on or front-on)
+            # This is more accurate if user is slightly angled.
+            # Simplified: if nose/ears are too far forward from shoulders
+            protraction_offset = abs(pose_data["nose"]['x'] - mid_shoulder_x) 
+            # In front view, this doesn't work well. We rely on physical_pose depth (Z)
+            if physical_pose:
+                depth_offset = pose_data["nose"]['z'] - physical_pose["left_shoulder"]['z']
+                protraction_score = max(0, 100 - (max(0, depth_offset) * 50))
+
         nose = pose_data["nose"]
         mid_s_x, mid_s_y = (l_s['x'] + r_s['x'])/2, (l_s['y'] + r_s['y'])/2
         neck_tilt_lat = abs(nose['x'] - mid_s_x)
@@ -236,9 +294,11 @@ class PostureAnalyzer:
         rula = self.rula_scorer.get_grand_score(pose_data, self.is_standing)
         reba = self.reba_scorer.get_grand_score(pose_data, self.is_standing, static_duration)
 
-        # 6. Hybrid Final Score (Prioritizing Biomechanics)
-        total_score = (bio_score * 0.40 + slouch_score * 0.20 + neck_score * 0.15 + 
-                       typing_score * 0.10 + shoulder_score * 0.10 + elbow_score * 0.05)
+        # 6. Hybrid Final Score (Prioritizing Biomechanics & Clinical Metrics)
+        # CVA and Protraction are critical clinical indicators
+        total_score = (bio_score * 0.35 + cva_score * 0.15 + protraction_score * 0.10 + 
+                       slouch_score * 0.15 + neck_score * 0.10 + 
+                       typing_score * 0.05 + shoulder_score * 0.05 + elbow_score * 0.05)
 
         return {
             "score": round(total_score, 2), "is_standing": self.is_standing, "calibrated": len(self.baselines) > 0,
@@ -248,15 +308,18 @@ class PostureAnalyzer:
             "metrics": {
                 "shoulder_diff": round(shoulder_diff, 4), "neck_tilt_lat": round(neck_tilt_lat, 4),
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
-                "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score
+                "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score,
+                "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2)
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None):
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100):
         if total_score >= 90 and not env: return "✅ Excellent alignment."
         items = []
         if env: items.append(env)
+        if cva < 70: items.append("🐢 Forward head posture.")
+        if protraction < 70: items.append("🏹 Shoulders rounded forward.")
         if slouch < 70: items.append("🪑 Slouching detected.")
         if neck < 70: items.append("🦒 Check neck tilt.")
         if shoulder < 70: items.append("⚖️ Level shoulders.")

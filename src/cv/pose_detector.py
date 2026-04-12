@@ -52,6 +52,8 @@ class PoseDetector:
             "nose": 0,
             "left_eye": 2, # Using eye center
             "right_eye": 5, # Using eye center
+            "left_ear": 7,
+            "right_ear": 8,
             "left_shoulder": 11,
             "right_shoulder": 12,
             "left_elbow": 13,

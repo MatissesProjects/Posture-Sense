@@ -5,7 +5,7 @@ import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
 import FatigueForecast from './FatigueForecast';
 import Link from 'next/link';
-import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3 } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3, Compass, Thermometer } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
@@ -51,6 +51,8 @@ export default function PostureDashboard() {
   const distance = analysis.distance_cm || 0;
   const angle = analysis.viewing_angle || 0;
   const typingScore = analysis.typing_score || 100;
+  const cva = analysis.metrics?.cva || 0;
+  const protractionScore = analysis.metrics?.protraction_score || 100;
   const nudge = analysis.nudge || null;
   const stretchType = analysis.stretch_type || null;
   const blinkRate = analysis.blink_rate || 0;
@@ -210,10 +212,10 @@ export default function PostureDashboard() {
             <MetricCard icon={<Activity className="text-blue-400" />} label="Mode" value={isStanding ? "Standing" : "Sitting"} />
             <MetricCard icon={<Maximize2 className="text-emerald-400" />} label="Distance" value={`${distance}cm`} />
             <MetricCard icon={<Monitor className="text-orange-400" />} label="Angle" value={`${angle}°`} />
+            <MetricCard icon={<Compass className={`transition-colors ${cva < 50 ? 'text-rose-500' : 'text-indigo-400'}`} />} label="CVA" value={`${Math.round(cva)}°`} />
+            <MetricCard icon={<Thermometer className={`transition-colors ${protractionScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Shoulders" value={`${Math.round(protractionScore)}%`} />
             <MetricCard icon={<Keyboard className={`transition-colors ${typingScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Typing" value={`${typingScore}%`} />
             <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blinks" value={`${blinkRate}/m`} />
-            <MetricCard icon={<Settings className="text-slate-400" />} label="Session" value={formatTime(sessionDuration)} />
-            <MetricCard icon={<Settings className="text-purple-400" />} label="Status" value={calibrated ? "Cal" : "Raw"} />
           </div>
 
           {/* Track 013: AI Coaching Insights */}
