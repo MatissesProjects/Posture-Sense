@@ -23,6 +23,12 @@ class PostureAnalyzer:
         self.raw_buffer = []
         self.BUFFER_SIZE = 30
         
+        # Track 021: Respiration Tracking
+        self.respiration_buffer = []
+        self.RESP_BUFFER_SIZE = 300 # ~10 seconds at 30fps
+        self.last_resp_rate = 0
+        self.last_resp_calc_time = 0
+        
         # Scoring weights (Now used as baseline for the hybrid model)
         self.weights = {
             "shoulder_level": 0.15,
@@ -231,6 +237,34 @@ class PostureAnalyzer:
         deviation = mid_s_x - mid_h_x 
         return round(deviation, 4)
 
+    def calculate_respiration_rate(self):
+        """
+        Estimates respiration rate (RPM) by detecting peaks in shoulder vertical movement.
+        """
+        if len(self.respiration_buffer) < 150: return 0.0 # Need at least 5 seconds
+        
+        # Simple peak detection on vertical movement
+        # 1. Zero-center and smooth the signal slightly
+        data = np.array(self.respiration_buffer)
+        data = data - np.mean(data)
+        
+        # 2. Find peaks (where signal goes from increasing to decreasing)
+        # Threshold to ignore tiny jitters
+        peaks = 0
+        threshold = 0.0005 # Normalized units
+        for i in range(1, len(data) - 1):
+            if data[i] > data[i-1] and data[i] > data[i+1] and data[i] > threshold:
+                peaks += 1
+        
+        # 3. Extrapolate to RPM
+        # 300 frames is ~10s at 30fps. 
+        # RPM = (peaks / duration_seconds) * 60
+        duration_sec = len(self.respiration_buffer) / 30.0
+        rpm = (peaks / duration_sec) * 60
+        
+        # Sane RPM range: 8 - 35
+        return round(np.clip(rpm, 0, 40), 1)
+
     def analyze(self, pose_data, iris_data=None, hand_data=None, static_duration=0, viewing_angle=0, brightness=100, eye_data=None):
         if not pose_data or "nose" not in pose_data:
             return {"score": 0, "status": "No Person Detected", "feedback": "No person detected."}
@@ -239,6 +273,24 @@ class PostureAnalyzer:
         self.raw_buffer.append(pose_data.copy())
         if len(self.raw_buffer) > self.BUFFER_SIZE: self.raw_buffer.pop(0)
         fidget_score = self.calculate_fidget_score()
+
+        # Track 021: Respiration
+        if "left_shoulder" in pose_data:
+            # Vertical shoulder position (inverted Y)
+            mid_s_y = (pose_data["left_shoulder"]['y'] + pose_data["right_shoulder"]['y']) / 2
+            self.respiration_buffer.append(mid_s_y)
+            if len(self.respiration_buffer) > self.RESP_BUFFER_SIZE: self.respiration_buffer.pop(0)
+            
+            # Recalculate RPM every 5 seconds
+            now = time.time()
+            if now - self.last_resp_calc_time > 5:
+                self.last_resp_rate = self.calculate_respiration_rate()
+                self.last_resp_calc_time = now
+        
+        # Screen Apnea detection (Track 021 Phase 2)
+        # If RPM is < 8 while focused, likely shallow breathing
+        is_screen_apnea = self.last_resp_rate > 0 and self.last_resp_rate < 8
+        stress_feedback = "🌬️ Breath check: Try deep belly breathing." if is_screen_apnea else None
 
         # 0. Temporal Smoothing (EMA)
         for name, lm in pose_data.items():
@@ -366,15 +418,17 @@ class PostureAnalyzer:
                 "slouch_score": round(slouch_score, 2), "elbow_score": round(elbow_score, 2),
                 "spine_score": round(spine_score, 2), "typing_score": typing_score, "bio_score": bio_score,
                 "cva": cva_deg, "cva_score": round(cva_score, 2), "protraction_score": round(protraction_score, 2),
-                "fidget_score": fidget_score, "lateral_lean": lateral_lean, "lateral_lean_score": lateral_lean_score
+                "fidget_score": fidget_score, "lateral_lean": lateral_lean, "lateral_lean_score": lateral_lean_score,
+                "respiration_rate": self.last_resp_rate
             },
-            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score, lateral_lean_score)
+            "feedback": self._generate_feedback(total_score, slouch_score, neck_score, shoulder_score, typing_score, spine, env_feedback, cva_score, protraction_score, fidget_score, lateral_lean_score, stress_feedback)
         }
 
-    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100, fidget=100, lateral_lean=100):
-        if total_score >= 90 and not env: return "✅ Excellent alignment."
+    def _generate_feedback(self, total_score, slouch, neck, shoulder, typing=100, spine=None, env=None, cva=100, protraction=100, fidget=100, lateral_lean=100, stress=None):
+        if total_score >= 90 and not env and not stress: return "✅ Excellent alignment."
         items = []
         if env: items.append(env)
+        if stress: items.append(stress)
         if fidget < 75: items.append("📉 Fatigue alert: High micro-movement/restlessness.")
         if cva < 70: items.append("🐢 Forward head posture.")
         if protraction < 70: items.append("🏹 Shoulders rounded forward.")

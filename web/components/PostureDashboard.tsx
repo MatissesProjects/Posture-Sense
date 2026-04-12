@@ -5,7 +5,7 @@ import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
 import FatigueForecast from './FatigueForecast';
 import Link from 'next/link';
-import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3, Compass, Thermometer } from 'lucide-react';
+import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3, Compass, Thermometer, Wind } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
@@ -16,6 +16,9 @@ export default function PostureDashboard() {
 
   const [activeStretch, setActiveStretch] = useState<string | null>(null);
   const [stretchTimer, setStretchTimer] = useState(0);
+  const [breathingActive, setBreathingActive] = useState(false);
+  const [breathingTimer, setBreathingTimer] = useState(0);
+  const lastBreathingTriggerRef = useRef<number>(0);
 
   const handleCalibrate = async () => {
     setCalibrating(true);
@@ -55,7 +58,30 @@ export default function PostureDashboard() {
   const protractionScore = analysis.metrics?.protraction_score || 100;
   const lateralLean = analysis.metrics?.lateral_lean || 0;
   const lateralLeanScore = analysis.metrics?.lateral_lean_score || 100;
+  const respirationRate = analysis.metrics?.respiration_rate || 0;
   const nudge = analysis.nudge || null;
+
+  // Track 021: Guided Breathing Auto-Trigger
+  useEffect(() => {
+    // Trigger if RPM is low (Screen Apnea) and not triggered in last 60s
+    if (respirationRate > 0 && respirationRate < 8 && !breathingActive) {
+      const now = Date.now();
+      if (now - lastBreathingTriggerRef.current > 60000) {
+        setBreathingActive(true);
+        setBreathingTimer(10);
+        lastBreathingTriggerRef.current = now;
+      }
+    }
+  }, [respirationRate, breathingActive]);
+
+  useEffect(() => {
+    if (breathingTimer > 0) {
+      const t = setTimeout(() => setBreathingTimer(breathingTimer - 1), 1000);
+      return () => clearTimeout(t);
+    } else if (breathingActive && breathingTimer === 0) {
+      setBreathingActive(false);
+    }
+  }, [breathingTimer, breathingActive]);
   const stretchType = analysis.stretch_type || null;
   const blinkRate = analysis.blink_rate || 0;
   const sessionDuration = analysis.session_duration || 0;
@@ -132,6 +158,30 @@ export default function PostureDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+      {breathingActive && (
+        <div className="fixed inset-0 z-[110] bg-cyan-900/95 flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500">
+          <div className="bg-slate-900 p-16 rounded-[4rem] border-4 border-cyan-500 shadow-[0_0_60px_rgba(6,182,212,0.5)] max-w-2xl w-full">
+            <Wind className="w-24 h-24 text-cyan-400 mb-8 mx-auto animate-pulse" />
+            <h2 className="text-6xl font-black mb-6 uppercase tracking-tighter text-white">
+              {breathingTimer > 5 ? "Inhale..." : "Exhale..."}
+            </h2>
+            <p className="text-2xl font-medium text-cyan-200 mb-12">Restorative Breath: Relax your shoulders.</p>
+            
+            <div className="relative w-48 h-48 mx-auto mb-12">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800" />
+                <circle cx="96" cy="96" r="88" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={552.92} strokeDashoffset={552.92 - (552.92 * breathingTimer) / 10} className="text-cyan-400 transition-all duration-1000 linear" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-white">{breathingTimer}</div>
+            </div>
+
+            <button onClick={() => setBreathingActive(false)} className="text-slate-500 hover:text-white transition-colors uppercase text-sm font-bold tracking-widest">
+              Skip Breath
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeStretch && (
         <div className="fixed inset-0 z-[100] bg-indigo-900/95 flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
           <div className="bg-slate-900 p-12 rounded-[3rem] border-4 border-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.5)] max-w-2xl w-full">
@@ -230,6 +280,7 @@ export default function PostureDashboard() {
             <MetricCard icon={<Compass className={`transition-colors ${cva < 50 ? 'text-rose-500' : 'text-indigo-400'}`} />} label="CVA" value={`${Math.round(cva)}°`} />
             <MetricCard icon={<Thermometer className={`transition-colors ${protractionScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Shoulders" value={`${Math.round(protractionScore)}%`} />
             <MetricCard icon={<ArrowUpCircle className={`transition-colors ${lateralLeanScore < 75 ? 'text-rose-500' : 'text-blue-400'}`} />} label="Symmetry" value={`${Math.round(lateralLeanScore)}%`} />
+            <MetricCard icon={<Wind className={`transition-colors ${respirationRate > 0 && respirationRate < 10 ? 'text-rose-500 animate-pulse' : 'text-cyan-400'}`} />} label="Breathing" value={`${Math.round(respirationRate)}/m`} />
             <MetricCard icon={<Keyboard className={`transition-colors ${typingScore < 70 ? 'text-rose-500' : 'text-emerald-400'}`} />} label="Typing" value={`${typingScore}%`} />
             <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blinks" value={`${blinkRate}/m`} />
           </div>
