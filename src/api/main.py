@@ -5,6 +5,8 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from src.cv.worker import CVWorker
+from src.intelligence.report_generator import ReportGenerator
+from fastapi.responses import FileResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,10 +80,10 @@ async def health():
     return {"status": "healthy", "worker_running": cv_worker.is_running if cv_worker else False}
 
 @app.post("/api/calibrate")
-async def calibrate():
+async def calibrate(context: str = "neutral"):
     if cv_worker:
-        success = cv_worker.calibrate()
-        return {"success": success}
+        success = cv_worker.calibrate(context)
+        return {"success": success, "context": context}
     return {"success": False, "error": "Worker not initialized"}
 
 @app.post("/api/toggle-mirror")
@@ -122,10 +124,47 @@ async def get_history(limit: int = 100):
                 "blink_rate": log[6],
                 "slouch_duration": log[7],
                 "rula_score": log[8],
-                "reba_score": log[9]
+                "reba_score": log[9],
+                "metrics": json.loads(log[10]) if log[10] else {}
             })
         return history
     return []
+
+@app.get("/api/sessions")
+async def get_sessions(limit: int = 20):
+    if cv_worker:
+        cursor = cv_worker.stats_manager.db_manager.conn.cursor()
+        cursor.execute('SELECT id, start_time, end_time, avg_score, total_ergonomic_minutes FROM sessions ORDER BY start_time DESC LIMIT ?', (limit,))
+        rows = cursor.fetchall()
+        
+        sessions = []
+        for row in rows:
+            sessions.append({
+                "id": row[0],
+                "start_time": row[1],
+                "end_time": row[2],
+                "avg_score": row[3],
+                "total_ergonomic_minutes": row[4]
+            })
+        return sessions
+    return []
+
+@app.get("/api/generate-report")
+async def generate_report():
+    if cv_worker:
+        # Get data for report (limit to last 500 for performance)
+        history = await get_history(limit=500)
+        sessions = await get_sessions(limit=50)
+        
+        generator = ReportGenerator()
+        filepath = generator.generate_assessment_report(history, sessions)
+        
+        return FileResponse(
+            path=filepath,
+            filename=os.path.basename(filepath),
+            media_type='application/pdf'
+        )
+    return {"error": "Worker not initialized"}
 
 @app.websocket("/ws/posture")
 async def websocket_endpoint(websocket: WebSocket):
