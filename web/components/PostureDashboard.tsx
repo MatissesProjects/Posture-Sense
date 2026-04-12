@@ -12,6 +12,7 @@ export default function PostureDashboard() {
   const [calibrating, setCalibrating] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [privacyActive, setPrivacyActive] = useState(false);
+  const [autoAlignActive, setAutoAlignActive] = useState(false);
   const lastNudgeRef = useRef<string | null>(null);
 
   const [activeStretch, setActiveStretch] = useState<string | null>(null);
@@ -42,6 +43,14 @@ export default function PostureDashboard() {
       const res = await fetch('http://127.0.0.1:8000/api/toggle-privacy', { method: 'POST' });
       const result = await res.json();
       setPrivacyActive(result.privacy_mode);
+    } catch (err) {}
+  };
+
+  const handleToggleAutoAlign = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/toggle-auto-align', { method: 'POST' });
+      const result = await res.json();
+      setAutoAlignActive(result.auto_align);
     } catch (err) {}
   };
 
@@ -239,6 +248,10 @@ export default function PostureDashboard() {
           </button>
           <button onClick={handleToggleMirror} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all border border-slate-700">
             <Maximize2 className="w-4 h-4" /> Mirror
+          </button>
+          <button onClick={handleToggleAutoAlign} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border ${autoAlignActive ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}>
+            <ArrowUpCircle className={`w-4 h-4 ${autoAlignActive ? 'animate-bounce' : ''}`} />
+            {autoAlignActive ? 'Auto-Align ON' : 'Auto-Align'}
           </button>
           <button onClick={handleCalibrate} className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg ${calibrating ? 'bg-indigo-900 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20'}`}>
             <RefreshCw className={`w-4 h-4 ${calibrating ? 'animate-spin' : ''}`} />

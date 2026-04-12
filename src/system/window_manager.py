@@ -1,4 +1,6 @@
 import pygetwindow as gw
+import win32gui
+import win32con
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +34,29 @@ class WindowManager:
         except Exception as e:
             # logger.error(f"Error tracking active window: {e}")
             return None
+
+    def move_active_window(self, x, y, width=None, height=None):
+        """ Moves the currently active window to a specific (x, y) coordinate. """
+        try:
+            hwnd = win32gui.GetForegroundWindow()
+            if not hwnd: return False
+            
+            # Don't move if it's the desktop or taskbar
+            title = win32gui.GetWindowText(hwnd)
+            if not title or title in ["Program Manager", ""]: return False
+
+            curr_x, curr_y, curr_r, curr_b = win32gui.GetWindowRect(hwnd)
+            w = width if width else (curr_r - curr_x)
+            h = height if height else (curr_b - curr_y)
+            
+            # SWP_NOSIZE if we don't want to change size
+            flags = win32con.SWP_NOZORDER | win32con.SWP_NOSIZE if (not width and not height) else win32con.SWP_NOZORDER
+            
+            win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, int(x), int(y), int(w), int(h), flags)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to move window: {e}")
+            return False
 
     def _identify_monitor(self, x, y):
         """ Determines which monitor a point (x, y) belongs to using bounding boxes. """

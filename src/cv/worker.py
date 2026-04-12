@@ -27,7 +27,9 @@ class CVWorker:
         self.thread = None
         self.mirror_mode = False
         self.privacy_mode = False
+        self.auto_align = False
         self.last_result = None
+        self.last_align_time = 0
         
         # Behavioral Tracking
         self.slouch_start_time = None
@@ -78,6 +80,10 @@ class CVWorker:
     def toggle_privacy(self):
         self.privacy_mode = not self.privacy_mode
         return self.privacy_mode
+
+    def toggle_auto_align(self):
+        self.auto_align = not self.auto_align
+        return self.auto_align
 
     def calibrate(self, context='neutral'):
         if self.last_result and self.last_result.get('pose'):
@@ -202,6 +208,15 @@ class CVWorker:
                 if target_y < ess_y - 150: result['analysis']['placement_suggestion'] = "Move active window DOWN."
                 elif target_y > ess_y + 150: result['analysis']['placement_suggestion'] = "Move active window UP."
                 else: result['analysis']['placement_suggestion'] = "Window is in the Ergonomic Sweet Spot."
+
+                # --- Track 022: Auto-Window Aligner ---
+                if self.auto_align and (now - self.last_align_time > 5):
+                    # Only align if significantly out of sweet spot
+                    if abs(target_y - ess_y) > 200:
+                        logger.info(f"Auto-aligning window to Y={ess_y}")
+                        if self.window_manager.move_active_window(result['ess']['center_x'] - 400, ess_y - 100):
+                            self.last_align_time = now
+                            result['analysis']['nudge'] = "✨ Window Auto-Aligned to Eye Level"
             else:
                 self.slouch_start_time = None
                 self.slouch_duration = 0

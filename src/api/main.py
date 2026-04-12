@@ -101,6 +101,13 @@ async def toggle_privacy():
         return {"privacy_mode": privacy_mode}
     return {"error": "Worker not initialized"}
 
+@app.post("/api/toggle-auto-align")
+async def toggle_auto_align():
+    if cv_worker:
+        auto_align = cv_worker.toggle_auto_align()
+        return {"auto_align": auto_align}
+    return {"error": "Worker not initialized"}
+
 @app.delete("/api/delete-all-data")
 async def delete_all_data():
     if cv_worker:
