@@ -198,12 +198,15 @@ class PostureAnalyzer:
         
         return round(angle_deg, 1)
 
-    def calculate_fidget_score(self):
+    def calculate_fidget_score(self, distance_cm=60):
         """
         Analyzes the raw buffer for micro-instability (high-frequency jitter).
         Returns a score from 0-100 (100 = very stable, 0 = high fidgeting).
         """
         if len(self.raw_buffer) < self.BUFFER_SIZE: return 100.0
+        
+        # Scale sensitivity based on distance (jitter is amplified far away)
+        dist_factor = max(1.0, distance_cm / 60.0)
         
         # Analyze specific stable points: Nose and Shoulders
         instability = 0
@@ -215,10 +218,10 @@ class PostureAnalyzer:
             std_x = np.std([p['x'] for p in pts])
             std_y = np.std([p['y'] for p in pts])
             
-            # Weighted instability (higher movement = higher instability)
-            instability += (std_x + std_y) * 1000 
+            # Weighted instability
+            instability += (std_x + std_y) * (1000 / dist_factor)
             
-        # Normalize: average across 3 points, threshold at ~15 units for "high fidget"
+        # Normalize
         avg_instability = instability / 3
         fidget_score = max(0, 100 - (avg_instability * 5))
         
@@ -238,21 +241,24 @@ class PostureAnalyzer:
         deviation = mid_s_x - mid_h_x 
         return round(deviation, 4)
 
-    def calculate_respiration_rate(self):
+    def calculate_respiration_rate(self, distance_cm=60):
         """
         Estimates respiration rate (RPM) by detecting peaks in shoulder vertical movement.
         """
         if len(self.respiration_buffer) < 150: return 0.0 # Need at least 5 seconds
         
         # Simple peak detection on vertical movement
+        # Scale sensitivity based on distance
+        dist_factor = max(1.0, distance_cm / 60.0)
+        
         # 1. Zero-center and smooth the signal slightly
         data = np.array(self.respiration_buffer)
         data = data - np.mean(data)
         
-        # 2. Find peaks (where signal goes from increasing to decreasing)
-        # Threshold to ignore tiny jitters
+        # 2. Find peaks
+        # Increase threshold as distance increases to ignore jitter
         peaks = 0
-        threshold = 0.0005 # Normalized units
+        threshold = 0.0005 * dist_factor
         for i in range(1, len(data) - 1):
             if data[i] > data[i-1] and data[i] > data[i+1] and data[i] > threshold:
                 peaks += 1
@@ -273,7 +279,9 @@ class PostureAnalyzer:
         # Track 017: Micro-Compensation (Pre-smoothing)
         self.raw_buffer.append(pose_data.copy())
         if len(self.raw_buffer) > self.BUFFER_SIZE: self.raw_buffer.pop(0)
-        fidget_score = self.calculate_fidget_score()
+        
+        distance_cm = self.estimate_distance(iris_data) if iris_data else 60
+        fidget_score = self.calculate_fidget_score(distance_cm)
 
         # Track 021: Respiration
         if "left_shoulder" in pose_data:
@@ -285,7 +293,7 @@ class PostureAnalyzer:
             # Recalculate RPM every 5 seconds
             now = time.time()
             if now - self.last_resp_calc_time > 5:
-                self.last_resp_rate = self.calculate_respiration_rate()
+                self.last_resp_rate = self.calculate_respiration_rate(distance_cm)
                 self.last_resp_calc_time = now
         
         # Screen Apnea detection (Track 021 Phase 2)
@@ -355,7 +363,6 @@ class PostureAnalyzer:
         # Horizontal offset from ear to shoulder plane
         protraction_score = 100
         if "left_ear" in pose_data:
-            mid_ear_x = (pose_data["left_ear"]['x'] + pose_data["right_ear"]['x']) / 2
             mid_shoulder_x = (l_s['x'] + r_s['x']) / 2
             # dx is depth offset in 2D projection (since user is side-on or front-on)
             # This is more accurate if user is slightly angled.
@@ -363,8 +370,9 @@ class PostureAnalyzer:
             protraction_offset = abs(pose_data["nose"]['x'] - mid_shoulder_x) 
             # In front view, this doesn't work well. We rely on physical_pose depth (Z)
             if physical_pose:
-                depth_offset = pose_data["nose"]['z'] - physical_pose["left_shoulder"]['z']
-                protraction_score = max(0, 100 - (max(0, depth_offset) * 50))
+                # FIX: Use physical_pose for both to ensure unit consistency (cm)
+                depth_offset = physical_pose["nose"]['z'] - physical_pose["left_shoulder"]['z']
+                protraction_score = max(0, 100 - (max(0, depth_offset) * 10)) # Lower multiplier for physical units
 
         nose = pose_data["nose"]
         mid_s_x, mid_s_y = (l_s['x'] + r_s['x'])/2, (l_s['y'] + r_s['y'])/2
