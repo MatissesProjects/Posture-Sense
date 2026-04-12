@@ -218,19 +218,48 @@ export default function PostureDashboard() {
             <MetricCard icon={<Activity className={`transition-colors ${blinkRate < 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`} />} label="Blinks" value={`${blinkRate}/m`} />
           </div>
 
-          {/* Track 013: AI Coaching Insights */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FatigueForecast prediction={stats.fatigue_prediction} />
-            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-2">
-                <BrainCircuit className="w-5 h-5 text-purple-400" />
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Session Insights</h3>
+            
+            {/* Track 019: Transition Advisor */}
+            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className={`w-5 h-5 ${stats.transition_data?.remaining_minutes < 5 ? 'text-orange-400 animate-spin-slow' : 'text-indigo-400'}`} />
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Transition Advisor</h3>
+                </div>
+                {stats.recovery_boost > 0 && (
+                  <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/20">
+                    +{stats.recovery_boost}% RECOVERY BOOST
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-slate-300 leading-relaxed italic">
-                {sessionDuration < 60 ? "Establishing session baseline..." : 
-                 score > 85 ? "Excellent focus! Your mechanical load is minimal right now." : 
-                 "Fatigue creeping in. You tend to slump more after looking at the top monitor."}
-              </p>
+              
+              {stats.transition_data?.current_mode ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Time {stats.transition_data.current_mode === 'sitting' ? 'Seated' : 'Standing'}</p>
+                      <p className="text-2xl font-black">{Math.round(stats.transition_data.duration_minutes)}m <span className="text-sm text-slate-500 font-normal">/ {Math.round(stats.transition_data.limit_minutes)}m limit</span></p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400 mb-1">Remaining</p>
+                      <p className={`text-xl font-bold ${stats.transition_data.remaining_minutes < 5 ? 'text-orange-400' : 'text-slate-200'}`}>{Math.round(stats.transition_data.remaining_minutes)}m</p>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${stats.transition_data.remaining_minutes < 5 ? 'bg-orange-500' : 'bg-indigo-500'}`} 
+                      style={{ width: `${Math.min(100, (stats.transition_data.duration_minutes / stats.transition_data.limit_minutes) * 100)}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs font-medium text-slate-300 italic">
+                    {stats.transition_data.recommendation}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic">Calibrating transition model...</p>
+              )}
             </div>
           </div>
 
@@ -259,6 +288,12 @@ export default function PostureDashboard() {
           </div>
 
           <div className="flex flex-col gap-2">
+            {data?.environment?.recommendations?.map((rec: string, idx: number) => (
+              <div key={idx} className="p-3 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 rounded-xl flex items-center gap-3 animate-in slide-in-from-left duration-300">
+                <Monitor className="w-5 h-5 text-indigo-400" />
+                <span className="font-semibold text-sm">{rec}</span>
+              </div>
+            ))}
             {eyeStrainWarning && (
               <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-xl flex items-center gap-3">
                 <AlertCircle className="w-5 h-5" />

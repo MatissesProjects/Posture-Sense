@@ -23,8 +23,8 @@ The project is divided into four main tracks to ensure focused development and r
 | **015** | [**Adaptive Calibration**](./tracks/015-adaptive-calibration/index.md) | Robustness to environment, lighting, and camera orientation changes. | *Completed* | [Plan](./tracks/015-adaptive-calibration/plan.md) |
 | **016** | [**Clinical Metrics**](./tracks/016-clinical-metrics/index.md) | Implementation of Craniovertebral Angle (CVA) and formal PT metrics. | *Completed* | [Plan](./tracks/016-clinical-metrics/plan.md) |
 | **017** | [**Micro-Compensation**](./tracks/017-micro-compensation/index.md) | Detecting subtle fatigue-induced fidgeting and stability shifts. | *Completed* | [Plan](./tracks/017-micro-compensation/plan.md) |
-| **018** | [**Workstation Analysis**](./tracks/018-workstation-analysis/index.md) | Automated detection of monitor height, desk level, and peripheral placement. | *Not Started* | [Plan](./tracks/018-workstation-analysis/plan.md) |
-| **019** | [**Predictive Transitioning**](./tracks/019-predictive-transitioning/index.md) | Proactive sit/stand recommendations based on longitudinal fatigue models. | *Not Started* | [Plan](./tracks/019-predictive-transitioning/plan.md) |
+| **018** | [**Workstation Analysis**](./tracks/018-workstation-analysis/index.md) | Automated detection of monitor height, desk level, and peripheral placement. | *Completed* | [Plan](./tracks/018-workstation-analysis/plan.md) |
+| **019** | [**Predictive Transitioning**](./tracks/019-predictive-transitioning/index.md) | Proactive sit/stand recommendations based on longitudinal fatigue models. | *Completed* | [Plan](./tracks/019-predictive-transitioning/plan.md) |
 | **020** | [**Spatial Corrections**](./tracks/020-spatial-corrections/index.md) | Asymmetrical load tracking and directional spatial audio nudges. | *Not Started* | [Plan](./tracks/020-spatial-corrections/plan.md) |
 | **021** | [**Respiration & Stress**](./tracks/021-respiration-stress/index.md) | Estimating breathing rate via chest/shoulder kinematics for stress alerts. | *Not Started* | [Plan](./tracks/021-respiration-stress/plan.md) |
 
