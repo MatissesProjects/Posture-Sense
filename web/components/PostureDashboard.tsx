@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import PostureCanvas from './PostureCanvas';
 import PostureTrends from './PostureTrends';
 import FatigueForecast from './FatigueForecast';
-import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, Camera, Settings, Shield, ShieldOff, RefreshCw, Maximize2, Monitor, ArrowUpCircle, CheckCircle2, AlertCircle, Flame, Target, Smile, Meh, Frown, Volume2, VolumeX, Timer, Keyboard, BrainCircuit, BarChart3 } from 'lucide-react';
 
 export default function PostureDashboard() {
   const [data, setData] = useState<any>(null);
@@ -159,6 +160,9 @@ export default function PostureDashboard() {
           </div>
         </div>
         <div className="flex gap-4">
+          <Link href="/corporate" className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all border border-slate-700 text-slate-300">
+            <BarChart3 className="w-4 h-4 text-indigo-400" /> Analytics
+          </Link>
           <button onClick={handleTogglePrivacy} className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all border ${privacyActive ? 'bg-rose-600 border-rose-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}>
             {privacyActive ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
             {privacyActive ? 'Privacy Active' : 'Privacy Shield'}
