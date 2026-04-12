@@ -26,7 +26,7 @@ The project is divided into four main tracks to ensure focused development and r
 | **018** | [**Workstation Analysis**](./tracks/018-workstation-analysis/index.md) | Automated detection of monitor height, desk level, and peripheral placement. | *Completed* | [Plan](./tracks/018-workstation-analysis/plan.md) |
 | **019** | [**Predictive Transitioning**](./tracks/019-predictive-transitioning/index.md) | Proactive sit/stand recommendations based on longitudinal fatigue models. | *Completed* | [Plan](./tracks/019-predictive-transitioning/plan.md) |
 | **020** | [**Spatial Corrections**](./tracks/020-spatial-corrections/index.md) | Asymmetrical load tracking and directional spatial audio nudges. | *Completed* | [Plan](./tracks/020-spatial-corrections/plan.md) |
-| **021** | [**Respiration & Stress**](./tracks/021-respiration-stress/index.md) | Estimating breathing rate via chest/shoulder kinematics for stress alerts. | *Not Started* | [Plan](./tracks/021-respiration-stress/plan.md) |
+| **021** | [**Respiration & Stress**](./tracks/021-respiration-stress/index.md) | Estimating breathing rate via chest/shoulder kinematics for stress alerts. | *Completed* | [Plan](./tracks/021-respiration-stress/plan.md) |
 
 
 ## Track Conventions
