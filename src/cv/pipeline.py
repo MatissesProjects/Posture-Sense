@@ -3,6 +3,7 @@ import json
 from src.cv.pose_detector import PoseDetector
 from src.cv.eye_tracker import EyeTracker
 from src.cv.hand_tracker import HandTracker
+from src.cv.workstation_analyzer import WorkstationAnalyzer
 from src.intelligence.posture_analyzer import PostureAnalyzer
 
 class CVPipeline:
@@ -10,6 +11,7 @@ class CVPipeline:
         self.pose_detector = PoseDetector()
         self.eye_tracker = EyeTracker()
         self.hand_tracker = HandTracker()
+        self.workstation_analyzer = WorkstationAnalyzer()
         self.posture_analyzer = PostureAnalyzer()
 
     def process_frame(self, img, static_duration=0, viewing_angle=0):
@@ -38,6 +40,9 @@ class CVPipeline:
         # Posture Analysis
         analysis = self.posture_analyzer.analyze(pose_lms, iris_lms, hand_lms, static_duration, viewing_angle, brightness, eye_data)
         
+        # Workstation Analysis (Track 018)
+        env_data = self.workstation_analyzer.analyze_environment(img, pose_lms, analysis.get('physical_pose'))
+
         data = {
             "pose": pose_lms,
             "iris": iris_lms,
@@ -47,6 +52,7 @@ class CVPipeline:
             "eye_data": eye_data,
             "brightness": brightness,
             "analysis": analysis,
+            "environment": env_data,
             "resolution": {"width": w, "height": h}
         }
 
