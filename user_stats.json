@@ -1,13 +1,13 @@
 {
     "daily_history": {
-        "2026-04-07": {
-            "total_score": 4480.81,
-            "entries": 56,
-            "ergonomic_minutes": 17
+        "2026-04-12": {
+            "total_score": 90,
+            "entries": 1,
+            "ergonomic_minutes": 1
         }
     },
     "current_streak": 1,
-    "last_active_date": "2026-04-07",
-    "total_ergonomic_minutes": 17,
-    "first_seen_date": "2026-04-12"
+    "last_active_date": "2026-04-12",
+    "total_ergonomic_minutes": 1,
+    "first_seen_date": "2026-01-01"
 }
