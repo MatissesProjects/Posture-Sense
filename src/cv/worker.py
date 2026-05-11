@@ -1,3 +1,8 @@
+import json
+import websockets
+import asyncio
+import queue
+import os
 import cv2
 import threading
 import time
@@ -58,6 +63,8 @@ class CVWorker:
 
         # Stats Interval
         self.last_stats_record_time = time.time()
+        self.biome_hub_url = os.getenv('BIOME_HUB_URL', 'ws://localhost:3000')
+        self.biome_queue = queue.Queue(maxsize=10)
 
     def start(self):
         if self.is_running: return
@@ -239,4 +246,38 @@ class CVWorker:
                 result['analysis']['score'] = 100
             
             self.last_result = result
+
+            
+            # Biome Hub Sync (Socket.io compatible)
+            try:
+                if not hasattr(self, '_biome_thread'):
+                    def biome_worker():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        async def stream_task():
+                            while True:
+                                try:
+                                    async with websockets.connect(self.biome_hub_url + "/socket.io/?EIO=4&transport=websocket") as ws:
+                                        # Socket.io Handshake
+                                        await ws.send("40") 
+                                        while True:
+                                            try:
+                                                payload = self.biome_queue.get(timeout=1)
+                                                # Send as telemetry event
+                                                await ws.send(f'42["telemetry",{json.dumps(payload)}]')
+                                            except queue.Empty: continue
+                                except Exception as e: 
+                                    await asyncio.sleep(5)
+                        loop.run_until_complete(stream_task())
+                    self._biome_thread = threading.Thread(target=biome_worker, daemon=True)
+                    self._biome_thread.start()
+                
+                payload = {
+                    "project": "posture",
+                    "data": self._sanitize_data(result)
+                }
+                try: self.biome_queue.put_nowait(payload)
+                except queue.Full: pass
+            except Exception: pass
+
             if self.callback: self.callback(self._sanitize_data(result), frame)
