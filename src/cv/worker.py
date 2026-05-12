@@ -248,26 +248,43 @@ class CVWorker:
             self.last_result = result
 
             
-            # Biome Hub Sync (Socket.io compatible)
+            
+            # Biome Hub Sync (Socket.io compatible with Heartbeat)
             try:
                 if not hasattr(self, '_biome_thread'):
                     def biome_worker():
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
+                        
                         async def stream_task():
                             while True:
                                 try:
                                     async with websockets.connect(self.biome_hub_url + "/socket.io/?EIO=4&transport=websocket") as ws:
-                                        # Socket.io Handshake
-                                        await ws.send("40") 
-                                        while True:
+                                        await ws.send("40") # Socket.io Handshake
+                                        
+                                        async def ping_pong_handler():
                                             try:
-                                                payload = self.biome_queue.get(timeout=1)
-                                                # Send as telemetry event
-                                                await ws.send(f'42["telemetry",{json.dumps(payload)}]')
-                                            except queue.Empty: continue
-                                except Exception as e: 
-                                    await asyncio.sleep(5)
+                                                async for message in ws:
+                                                    if message == "2": # Engine.io Ping
+                                                        await ws.send("3") # Engine.io Pong
+                                            except: pass
+                                        
+                                        # Run ping handler in background
+                                        pp_task = asyncio.create_task(ping_pong_handler())
+                                        
+                                        try:
+                                            while not pp_task.done():
+                                                try:
+                                                    # Use a short timeout to check if connection still alive
+                                                    payload = self.biome_queue.get(timeout=0.5)
+                                                    await ws.send(f'42["telemetry",{json.dumps(payload)}]')
+                                                except queue.Empty:
+                                                    continue
+                                        finally:
+                                            pp_task.cancel()
+                                except Exception:
+                                    await asyncio.sleep(5) # Backoff
+                                    
                         loop.run_until_complete(stream_task())
                     self._biome_thread = threading.Thread(target=biome_worker, daemon=True)
                     self._biome_thread.start()
@@ -277,7 +294,13 @@ class CVWorker:
                     "data": self._sanitize_data(result)
                 }
                 try: self.biome_queue.put_nowait(payload)
-                except queue.Full: pass
+                except queue.Full: 
+                    # If queue full, drop oldest and try again to ensure latest data
+                    try: 
+                        self.biome_queue.get_nowait()
+                        self.biome_queue.put_nowait(payload)
+                    except: pass
             except Exception: pass
+
 
             if self.callback: self.callback(self._sanitize_data(result), frame)
